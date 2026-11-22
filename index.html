@@ -196,6 +196,16 @@
   .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
   .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
   .bar-l { width: 3px; align-self: stretch; border-radius: 3px; }
+  .aniv { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .aniv svg { width: 13px; height: 13px; flex: none; }
+  .aniv.perto { color: #a3376a; font-weight: 600; }
+  .ag-modo button { padding: 6px 12px; }
+  .prox-card { padding: 0; overflow: hidden; }
+  .prox-dia { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 18px; background: var(--surface-2); border-top: 1px solid var(--border); cursor: pointer; font-size: 13.5px; }
+  .prox-card .prox-dia:first-child { border-top: 0; }
+  .prox-dia > span { color: var(--muted); }
+  .prox-dia .prox-n { margin-left: auto; font-size: 12px; white-space: nowrap; }
+  @media (max-width: 600px) { .aniv { font-size: 11.5px; } .prox-dia { padding: 11px 14px; gap: 6px; } .prox-dia > span:not(.prox-n) { font-size: 12.5px; } }
   .done-pill { font-size: 11px; font-weight: 600; color: var(--accent-ink); background: var(--accent-soft); padding: 2px 8px; border-radius: 99px; }
   .slot-actions { display: flex; gap: 2px; opacity: 0; transition: opacity .15s; }
   .slot:hover .slot-actions, .slot-actions:focus-within { opacity: 1; }
@@ -502,6 +512,7 @@ const I = {
   entra: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M16 17H7V8"/></svg>',
   sai: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>',
   menos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>',
+  bolo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7"/><path d="M5 16c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 5 0M12 12V8M12 5.5c.8-.6.8-1.7 0-2.5-.8.8-.8 1.9 0 2.5z"/></svg>',
   image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>',
 };
 
@@ -1059,6 +1070,51 @@ function slotsDoDia(data) {
   return { trabalha, itens: out.sort((a,b) => toMin(a.hora) - toMin(b.hora) || (a.pausa ? -1 : 0)) };
 }
 
+// Cartão de um agendamento (nome, tipo, aniversário e ações)
+function slotConsulta(c) {
+  const p = pac(c.pacienteId) || { nome: '—' }, t = tipoInfo(c.tipo), an = aniversario(p.nasc);
+  return `<div class="slot">
+    <span class="time">${c.hora}</span>
+    <div class="appt" data-a="abrir" data-id="${c.id}">
+      <span class="bar-l" style="background:${t.cor}"></span>
+      <div style="min-width:0">
+        <div class="name">${esc(p.nome)}</div>
+        <span class="tag"><span class="dot" style="background:${t.cor}"></span>${esc(t.nome)}${p.convenio ? ' · ' + esc(p.convenio) : ''}</span>
+        ${an ? `<span class="aniv ${an.perto ? 'perto' : ''}">${I.bolo}${esc(an.texto)}</span>` : ''}
+      </div>
+      ${c.status === 'atendido' ? '<span class="done-pill">Atendido</span>' : ''}
+      ${noCaixa(c.id) ? '<span class="pill pago">No caixa</span>' : ''}
+    </div>
+    <div class="slot-actions">
+      <button class="icon-btn" data-a="pagar" data-id="${c.id}" title="${noCaixa(c.id) ? 'Ver no caixa' : 'Adicionar ao caixa'}">${I.money}</button>
+      <button class="icon-btn" data-a="status" data-id="${c.id}" title="${c.status === 'atendido' ? 'Desmarcar atendido' : 'Marcar como atendido'}">${I.check}</button>
+      <button class="icon-btn" data-a="cancelar" data-id="${c.id}" title="Cancelar agendamento">${I.x}</button>
+    </div>
+  </div>`;
+}
+// Aniversário: "Aniversário 10/05 · 36 anos"; perto da data vira destaque ("hoje", "amanhã", "em 3 dias")
+function aniversario(nasc) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(nasc || '')) return null;
+  const [y, m, d] = nasc.split('-').map(Number), hoje = parseISO(TODAY);
+  let prox = new Date(hoje.getFullYear(), m - 1, d); if (prox < hoje) prox = new Date(hoje.getFullYear() + 1, m - 1, d);
+  const dias = Math.round((prox - hoje) / 86400000), anos = prox.getFullYear() - y, dm = `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
+  if (dias === 0) return { perto: true, texto: `Aniversário hoje · ${anos} anos` };
+  if (dias === 1) return { perto: true, texto: `Aniversário amanhã · ${anos} anos` };
+  if (dias <= 7) return { perto: true, texto: `Aniversário em ${dias} dias · ${anos} anos` };
+  return { perto: false, texto: `Aniversário ${dm} · ${anos - 1} anos` };
+}
+// Próximos atendimentos: de hoje em diante, do mais perto para o mais longe, separados por dia
+function listaProximos() {
+  const lista = S.consultas.filter(c => c.data >= TODAY).sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
+  if (!lista.length) return `<div class="card"><div class="empty-day">Nenhum atendimento marcado de hoje em diante.<br><span class="sub">Use <b>Agendar</b> para marcar um horário.</span></div></div>`;
+  const dias = [...new Set(lista.map(c => c.data))];
+  const quando = d => { const n = Math.round((parseISO(d) - parseISO(TODAY)) / 86400000); return n === 0 ? 'Hoje' : n === 1 ? 'Amanhã' : `Em ${n} dias`; };
+  return `<div class="card prox-card">${dias.map(d => {
+    const doDia = lista.filter(c => c.data === d);
+    return `<div class="prox-dia" data-a="dia" data-d="${d}" title="Abrir este dia"><b>${quando(d)}</b><span>${esc(fmtDate(d, { weekday: 'long', day: 'numeric', month: 'long' }))}</span><span class="prox-n">${doDia.length} ${doDia.length === 1 ? 'agendamento' : 'agendamentos'}</span></div>${doDia.map(slotConsulta).join('')}`;
+  }).join('')}</div>`;
+}
+let agModo = 'dia';
 function renderAgenda() {
   const { trabalha, itens } = slotsDoDia(dia);
   const doDia = S.consultas.filter(c => c.data === dia);
@@ -1072,8 +1128,9 @@ function renderAgenda() {
       <button class="btn primary" data-a="legado">Enviar para a nuvem</button>
     </div>` : ''}
     <div class="page-head">
-      <div><h1>Agenda</h1><div class="sub">${dia === TODAY ? 'Hoje · ' : ''}${esc(label)}</div></div>
+      <div><h1>Agenda</h1><div class="sub">${agModo === 'proximos' ? 'Próximos atendimentos, do mais perto para o mais longe' : (dia === TODAY ? 'Hoje · ' : '') + esc(label)}</div></div>
       <div class="daynav">
+        <div class="seg ag-modo">${[['dia', 'Dia'], ['proximos', 'Próximos']].map(([k, r]) => `<button data-a="agModo" data-m="${k}" class="${agModo === k ? 'on' : ''}">${r}</button>`).join('')}</div>
         <button class="btn" data-a="hoje">Hoje</button>
         <button class="icon-btn" data-a="prev" title="Dia anterior">${I.left}</button>
         <button class="icon-btn" data-a="next" title="Próximo dia">${I.right}</button>
@@ -1087,35 +1144,24 @@ function renderAgenda() {
         ${itens.map(it => {
           if (it.pausa) return `<div class="slot break"><span>${it.hora}</span><span>Intervalo · ${S.settings.intIni}–${S.settings.intFim}</span><span></span></div>`;
           if (!it.c) return `<div class="slot free"><span class="time">${it.hora}</span><button class="add" data-a="novo" data-h="${it.hora}">${I.plus}Agendar horário</button><span></span></div>`;
-          const c = it.c, p = pac(c.pacienteId) || { nome: '—' }, t = tipoInfo(c.tipo);
-          return `<div class="slot">
-            <span class="time">${c.hora}</span>
-            <div class="appt" data-a="abrir" data-id="${c.id}">
-              <span class="bar-l" style="background:${t.cor}"></span>
-              <div style="min-width:0">
-                <div class="name">${esc(p.nome)}</div>
-                <span class="tag"><span class="dot" style="background:${t.cor}"></span>${t.nome}${p.convenio ? ' · ' + esc(p.convenio) : ''}</span>
-              </div>
-              ${c.status === 'atendido' ? '<span class="done-pill">Atendido</span>' : ''}
-              ${noCaixa(c.id) ? '<span class="pill pago">No caixa</span>' : ''}
-            </div>
-            <div class="slot-actions">
-              <button class="icon-btn" data-a="pagar" data-id="${c.id}" title="${noCaixa(c.id) ? 'Ver no caixa' : 'Adicionar ao caixa'}">${I.money}</button>
-              <button class="icon-btn" data-a="status" data-id="${c.id}" title="${c.status === 'atendido' ? 'Desmarcar atendido' : 'Marcar como atendido'}">${I.check}</button>
-              <button class="icon-btn" data-a="cancelar" data-id="${c.id}" title="Cancelar agendamento">${I.x}</button>
-            </div>
-          </div>`;
+          return slotConsulta(it.c);
         }).join('')}
       </div>
       <aside>
         <div class="card">${calendario()}</div>
         <div class="stats">
-          <div class="card stat"><div class="n">${doDia.length}</div><div class="l">Agendados</div></div>
-          <div class="card stat"><div class="n">${atendidos}</div><div class="l">Atendidos</div></div>
+          ${agModo === 'proximos' ? (() => {
+            const prox = S.consultas.filter(c => c.data >= TODAY);
+            const aniv = new Set(prox.map(c => pac(c.pacienteId)).filter(p => p && (aniversario(p.nasc) || {}).perto).map(p => p.id)).size;
+            return `<div class="card stat"><div class="n">${prox.length}</div><div class="l">Próximos atendimentos</div></div>
+          <div class="card stat"><div class="n">${aniv}</div><div class="l">Aniversários nos próximos 7 dias</div></div>`;
+          })() : `<div class="card stat"><div class="n">${doDia.length}</div><div class="l">Agendados</div></div>
+          <div class="card stat"><div class="n">${atendidos}</div><div class="l">Atendidos</div></div>`}
         </div>
       </aside>
     </div>`;
   if (buscaAg.trim()) $('#view .agenda > .card').outerHTML = resultadosAgenda(buscaAg);
+  else if (agModo === 'proximos') $('#view .agenda > .card').outerHTML = listaProximos();
   ligarBusca('buscaAg', v => { buscaAg = v; });
 }
 // Resultado da busca na agenda: todos os agendamentos (qualquer dia) da pessoa procurada
@@ -1170,10 +1216,10 @@ $('#view').addEventListener('click', e => {
   const el = e.target.closest('[data-a]'); if (!el) return;
   const a = el.dataset.a, id = el.dataset.id;
   const mesDe = s => s.slice(0,7);
-  if (a === 'hoje') { dia = TODAY; mes = mesDe(dia); }
-  else if (a === 'prev') { dia = addDays(dia, -1); mes = mesDe(dia); }
-  else if (a === 'next') { dia = addDays(dia, 1); mes = mesDe(dia); }
-  else if (a === 'dia') { dia = el.dataset.d; mes = mesDe(dia); }
+  if (a === 'hoje') { dia = TODAY; mes = mesDe(dia); agModo = 'dia'; }
+  else if (a === 'prev') { dia = addDays(dia, -1); mes = mesDe(dia); agModo = 'dia'; }
+  else if (a === 'next') { dia = addDays(dia, 1); mes = mesDe(dia); agModo = 'dia'; }
+  else if (a === 'dia') { dia = el.dataset.d; mes = mesDe(dia); agModo = 'dia'; }
   else if (a === 'mprev' || a === 'mnext') { const [y,m] = mes.split('-').map(Number); mes = iso(new Date(y, m-1 + (a === 'mnext' ? 1 : -1), 1)).slice(0,7); }
   else if (a === 'novo') return modalAgendar(el.dataset.h);
   else if (a === 'abrir') { const c = S.consultas.find(c => c.id === id); return ehAdmin() ? abrirProntuario(c.pacienteId, c.id) : modalPaciente(c.pacienteId); }
@@ -1182,7 +1228,8 @@ $('#view').addEventListener('click', e => {
   else if (a === 'legadoNao') { legadoOculto = true; }
   else if (a === 'legado') { const d = legado(); if (!d) return; el.disabled = true; importar(d, true).then(ok => { if (ok) { try { localStorage.setItem('prontuario.migrado', TODAY); localStorage.setItem(MIGRADO_NUVEM, TODAY); } catch {} } render(); }); return; }
   else if (a === 'pagar') return pagarConsulta(id);
-  else if (a === 'irDia') { dia = el.dataset.d; mes = dia.slice(0, 7); buscaAg = ''; window.scrollTo(0, 0); }
+  else if (a === 'agModo') { agModo = el.dataset.m; }
+  else if (a === 'irDia') { agModo = 'dia'; dia = el.dataset.d; mes = dia.slice(0, 7); buscaAg = ''; window.scrollTo(0, 0); }
   else if (a === 'irCaixa') { buscaFin = ''; finPer = 'dia'; mudarDiaCaixa(el.dataset.d); window.scrollTo(0, 0); }
   else if (a === 'finPer') { finPer = el.dataset.p; }
   else if (a === 'finNovaEnt') return modalEntrada({ data: caixaDia === TODAY || finPer === 'dia' ? caixaDia : TODAY });
