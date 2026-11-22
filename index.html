@@ -93,14 +93,18 @@
   .who { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
   .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); display: grid; place-items: center; font-weight: 600; font-size: 12px; flex: none; }
 
-  /* Barra fixa no rodapé com o botão Salvar */
-  body { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
-  .savebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--surface); border-top: 1px solid var(--border); box-shadow: 0 -4px 12px rgba(16,24,40,.06); padding-top: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .savebar-in { max-width: 1132px; margin: 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
-  .savebar-in .sub { margin: 0; text-align: right; }
-  .btn.save { padding: 10px 26px; font-weight: 600; justify-content: center; min-width: 150px; }
-  .btn.save.err { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
-  @media (max-width: 600px) { .savebar-in { justify-content: space-between; } .btn.save { flex: 1; max-width: 220px; } }
+  /* Aviso de salvamento automático (canto inferior) */
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  .savebar { position: fixed; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 30; display: flex; align-items: center; gap: 7px; padding: 7px 13px 7px 10px; border-radius: 999px; font-size: 12.5px; color: var(--muted);
+    background: rgba(255,255,255,.8); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid var(--border); box-shadow: 0 6px 18px -8px rgba(90,70,30,.25); pointer-events: none; }
+  .savebar[hidden] { display: none; }
+  .salvo-ic { display: grid; place-items: center; width: 16px; height: 16px; }
+  .salvo-ic svg { width: 15px; height: 15px; }
+  .savebar.ok .salvo-ic { color: var(--good); }
+  .savebar.off, .savebar.err { color: var(--danger); background: rgba(251,238,236,.95); border-color: #f0cfca; }
+  .girando { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--border-strong); border-top-color: var(--accent); animation: gira .8s linear infinite; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+  .auto-info { margin-right: auto; align-self: center; }
   main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; }
   .page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
   h1 { font-size: 22px; letter-spacing: -.02em; margin: 0; font-weight: 650; text-wrap: balance; }
@@ -370,9 +374,12 @@
     nav button { flex: 1; justify-content: center; padding: 11px 0; border-radius: 16px; }
     nav button svg { width: 23px; height: 23px; }
     nav button span { display: none; }
-    .savebar { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); left: 10px; right: 10px; border-radius: 16px; border: 1px solid var(--border); padding: 8px 10px; box-shadow: 0 6px 20px -8px rgba(90,70,30,.25); }
-    body { padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
-    .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+    .savebar { bottom: calc(82px + env(safe-area-inset-bottom, 0px)); right: 50%; transform: translateX(50%); }
+    body { padding-bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
+    .toast { bottom: calc(126px + env(safe-area-inset-bottom, 0px)); }
+    .auto-info { flex-basis: 100%; text-align: center; margin: 0 0 2px; order: -1; }
+    .d-foot { gap: 8px; }
+    .d-foot .btn { flex: 1 1 0; justify-content: center; padding-left: 8px; padding-right: 8px; white-space: nowrap; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -397,7 +404,7 @@
 
 <main id="view"></main>
 
-<div class="savebar"><div class="savebar-in"><span class="sub" id="salvoInfo"></span><button class="btn save" id="btnSalvar"></button></div></div>
+<div class="savebar" id="salvoBox" role="status" aria-live="polite"><span class="salvo-ic" id="salvoIc"></span><span id="salvoInfo"></span></div>
 
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer"></aside>
@@ -488,15 +495,18 @@ function acompanhar(p) {
   emAndamento.add(t); statusSalvar();
   return t;
 }
+// Aviso no canto: tudo é salvo sozinho, aqui só mostra a situação
 function statusSalvar() {
-  const b = $('#btnSalvar'); if (!b) return;
+  const box = $('#salvoBox'); if (!box) return;
   const salvando = emAndamento.size > 0;
-  b.className = 'btn save' + (salvando ? '' : erroSalvar ? ' err' : ' primary');
-  b.innerHTML = (erroSalvar && !salvando ? I.alert : I.check) + `<span>${salvando ? 'Salvando…' : erroSalvar ? 'Tentar salvar' : 'Salvar'}</span>`;
-  $('#salvoInfo').textContent = salvando ? 'Gravando no banco de dados…'
-    : erroSalvar ? 'Não foi possível salvar a última alteração.'
-    : ultimoSalvo ? `Salvo às ${ultimoSalvo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-    : estado === 'pronto' ? 'Tudo salvo no banco de dados' : '';
+  const tipo = semConexao ? 'off' : salvando ? 'ing' : erroSalvar ? 'err' : 'ok';
+  box.className = 'savebar ' + tipo;
+  $('#salvoIc').innerHTML = tipo === 'ok' ? I.check : tipo === 'ing' ? '<span class="girando"></span>' : I.alert;
+  $('#salvoInfo').textContent = tipo === 'off' ? 'Sem internet · vou salvar assim que voltar'
+    : tipo === 'ing' ? 'Salvando…'
+    : tipo === 'err' ? 'Não foi possível salvar a última alteração'
+    : ultimoSalvo ? `Tudo salvo · ${ultimoSalvo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+    : 'Tudo salvo';
 }
 // ---------- Banco de dados na nuvem (Cloudflare: Worker + D1) ----------
 // Os dados ficam na Cloudflare e aparecem iguais em qualquer computador ou celular.
@@ -516,19 +526,32 @@ async function api(metodo, caminho, corpo, comoArquivo) {
   if (corpo instanceof Blob) { body = corpo; h['Content-Type'] = corpo.type || 'image/jpeg'; }
   else if (corpo !== undefined) { body = JSON.stringify(corpo); h['Content-Type'] = 'application/json'; }
   let r;
-  try { r = await fetch(API_URL + caminho, { method: metodo, headers: h, body, cache: 'no-store' }); }
+  try { r = await fetch(API_URL + caminho, { method: metodo, headers: h, body, cache: 'no-store', keepalive: typeof body === 'string' && body.length < 60000 }); }
   catch { throw { code: 'rede' }; }
   if (r.status === 401 && token && perfil) { sessaoCaiu(); throw { code: 'sem_sessao' }; }
   if (!r.ok) { let d = {}; try { d = await r.json(); } catch {} throw { code: d.erro || 'http_' + r.status, status: r.status }; }
   return comoArquivo ? r.blob() : r.json();
 }
 
+// Sem internet (ou servidor fora do ar): espera e tenta de novo, sem perder a alteração
+let semConexao = false;
+const espera = ms => new Promise(r => setTimeout(r, ms));
+async function comInsistencia(fn) {
+  for (let n = 0; ; n++) {
+    try { const r = await fn(); if (semConexao) { semConexao = false; statusSalvar(); } return r; }
+    catch (e) {
+      if (!(e && (e.code === 'rede' || e.status >= 500)) || n >= 60) throw e;
+      semConexao = true; statusSalvar();
+      await espera(Math.min(20000, 1500 * 2 ** n));
+    }
+  }
+}
 // Gravações do mesmo item saem uma de cada vez, na ordem em que foram feitas
 const pendentes = {}, filas = {};
 function enviar(col, id, fn) {
   const k = chave(col, id);
   pendentes[k] = (pendentes[k] || 0) + 1;
-  const p = (filas[k] || Promise.resolve()).catch(() => {}).then(fn);
+  const p = (filas[k] || Promise.resolve()).catch(() => {}).then(() => comInsistencia(fn));
   filas[k] = p;
   const fim = () => { if (--pendentes[k] <= 0) { delete pendentes[k]; delete filas[k]; } };
   p.then(fim, fim);
@@ -686,7 +709,7 @@ function limparSessao(msg) {
 }
 const sessaoCaiu = () => limparSessao('Seu acesso terminou ou foi bloqueado. Entre de novo.');
 async function sair(msg) {
-  if (estado === 'pronto') { salvarCaixa(); await Promise.allSettled([...emAndamento]); }
+  if (estado === 'pronto') { despejar(); await Promise.allSettled([...emAndamento]); }
   try { if (token) await api('POST', '/api/sair'); } catch {}
   limparSessao(); if (msg) toast(msg);
 }
@@ -845,18 +868,19 @@ function atualizarGaveta() {
 
 // ---------- Navegação ----------
 let view = 'agenda', dia = TODAY, mes = TODAY.slice(0,7), busca = '', legadoOculto = false;
-function go(v) { if (view === 'financeiro') salvarCaixa(); view = v; configMostrada = false; render(); }
+// Grava na hora tudo o que ainda está esperando a pausa da digitação
+function despejar() {
+  try { if (tCfg) salvarConfigAuto(); } catch (e) { console.error(e); }
+  try { salvarCaixa(); } catch (e) { console.error(e); }
+  try { if (despejarGaveta) { const d = despejarGaveta; despejarGaveta = null; d(); } } catch (e) { console.error(e); }
+}
+function go(v) { despejar(); view = v; configMostrada = false; render(); }
+// Celular trocando de app ou bloqueando a tela: grava antes
+document.addEventListener('visibilitychange', () => { if (document.hidden && estado === 'pronto') despejar(); });
+// Fechando a aba com algo ainda sendo enviado: o navegador pergunta antes de sair
+window.addEventListener('beforeunload', e => { if (estado !== 'pronto') return; despejar(); if (emAndamento.size) { e.preventDefault(); e.returnValue = ''; } });
 $('#nav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) go(b.dataset.view); });
 $('#btnSair').onclick = () => sair();
-$('#btnSalvar').onclick = async () => {
-  if (estado !== 'pronto') return toast('Os dados ainda estão carregando.', 'erro');
-  if (view === 'config') salvarConfig();
-  salvarCaixa();
-  if (erroSalvar) { erroSalvar = false; gravarConfig(); }
-  await Promise.allSettled([...emAndamento]);
-  statusSalvar();
-  if (!erroSalvar) toast(`Tudo salvo na nuvem · ${S.pacientes.length} pacientes, ${S.registros.length} registros, ${S.prescricoes.length} prescrições`);
-};
 
 const SO_ADMIN = ['modelos', 'config', 'equipe'];
 function render() {
@@ -1178,7 +1202,9 @@ function modalPaciente(id) {
 // ---------- Prontuário (gaveta) ----------
 let drawerPac = null, drawerConsulta = null, drawerTab = 'novo', prescForm = null;
 const enviando = {};
+let despejarGaveta = null; // grava na hora o texto que ainda está esperando a pausa da digitação
 function abrirProntuario(pid, consultaId, tab) {
+  if (despejarGaveta) { const d = despejarGaveta; despejarGaveta = null; d(); }
   tab = tab || 'novo';
   const mesmo = drawerPac === pid && drawerTab === tab && $('#drawer').classList.contains('open');
   const rolagem = mesmo && $('#dBody') ? $('#dBody').scrollTop : 0;
@@ -1213,7 +1239,7 @@ function abrirProntuario(pid, consultaId, tab) {
   if (mesmo) $('#dBody').scrollTop = rolagem;
   $('#drawer').classList.add('open'); $('#scrim').classList.add('open'); travar();
 }
-function fecharDrawer() { $('#drawer').classList.remove('open'); $('#scrim').classList.remove('open'); drawerPac = null; prescForm = null; travar(); }
+function fecharDrawer() { if (despejarGaveta) { const d = despejarGaveta; despejarGaveta = null; d(); } $('#drawer').classList.remove('open'); $('#scrim').classList.remove('open'); drawerPac = null; prescForm = null; travar(); }
 function travar() { document.documentElement.classList.toggle('travado', $('#drawer').classList.contains('open') || $('#modal').classList.contains('open')); }
 $('#scrim').onclick = fecharDrawer;
 
@@ -1229,22 +1255,41 @@ function tabNovo(pid) {
     const m = S.modelos.find(m => m.id === $('#rModelo').value);
     $('#rCampos').innerHTML = (m ? m.campos : ['Evolução']).map((c, i) => `<div class="field-block"><label for="rc${i}">${esc(c)}</label><textarea class="input" id="rc${i}" data-l="${esc(c)}">${esc(atual[c] || '')}</textarea></div>`).join('');
   };
-  $('#rModelo').onchange = desenhar; desenhar();
-  $('#dFoot').innerHTML = `<button class="btn" id="rPrint">${I.print}Salvar e imprimir</button><button class="btn" id="rPdf">${I.pdf}Salvar e baixar PDF</button><button class="btn primary" id="rSave">${I.check}Salvar registro</button>`;
-  const salvar = () => {
+  $('#dFoot').innerHTML = `<span class="sub auto-info" id="rInfo">Salva sozinho enquanto você digita</span><button class="btn" id="rPrint">${I.print}Imprimir</button><button class="btn" id="rPdf">${I.pdf}Baixar PDF</button><button class="btn primary" id="rSave">${I.check}Concluir</button>`;
+  // O registro é criado no primeiro texto digitado e atualizado a cada pausa na digitação
+  let rId = null, tReg = null;
+  const autoSalvar = () => {
+    clearTimeout(tReg); tReg = null;
+    if (!$('#rCampos')) return null;
     const campos = [...document.querySelectorAll('#rCampos textarea')].map(t => ({ rotulo: t.dataset.l, texto: t.value.trim() })).filter(c => c.texto);
-    if (!campos.length) { toast('Preencha ao menos um campo', 'erro'); return null; }
+    let r = rId && S.registros.find(x => x.id === rId);
+    if (!campos.length) { if (r) { S.registros = S.registros.filter(x => x.id !== rId); apagar('registros', rId); rId = null; } return null; }
     const m = S.modelos.find(m => m.id === $('#rModelo').value);
-    const now = new Date();
-    const r = { id: uid(), pacienteId: pid, data: $('#rData').value || TODAY, hora: toHM(now.getHours()*60 + now.getMinutes()), modelo: m ? m.nome : 'Evolução livre', campos, criadoEm: now.toISOString() };
-    S.registros.push(r); gravar('registros', r);
-    const c = S.consultas.find(c => c.id === drawerConsulta); if (c && c.status !== 'atendido') { c.status = 'atendido'; gravar('consultas', c); }
-    render(); abrirProntuario(pid, drawerConsulta, 'hist'); toast('Registro salvo no prontuário');
+    if (!r) {
+      const now = new Date();
+      r = { id: uid(), pacienteId: pid, hora: toHM(now.getHours()*60 + now.getMinutes()), criadoEm: now.toISOString() };
+      S.registros.push(r); rId = r.id;
+      const c = S.consultas.find(c => c.id === drawerConsulta); if (c && c.status !== 'atendido') { c.status = 'atendido'; gravar('consultas', c); }
+    }
+    Object.assign(r, { data: $('#rData').value || TODAY, modelo: m ? m.nome : 'Evolução livre', campos });
+    gravar('registros', r);
+    const info = $('#rInfo'); if (info) info.textContent = 'Salvo automaticamente às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     return r;
   };
-  $('#rSave').onclick = salvar;
-  $('#rPdf').onclick = () => { const r = salvar(); if (r) pdfRegistro(r); };
-  $('#rPrint').onclick = () => { const r = salvar(); if (r) pdfRegistro(r, true); };
+  const agendar = () => { clearTimeout(tReg); tReg = setTimeout(autoSalvar, 700); const info = $('#rInfo'); if (info) info.textContent = 'Salvando…'; };
+  despejarGaveta = () => { if (tReg) autoSalvar(); };
+  $('#rModelo').onchange = () => { desenhar(); agendar(); }; desenhar();
+  $('#rData').onchange = agendar;
+  $('#rCampos').addEventListener('input', agendar);
+  const concluir = () => {
+    const r = autoSalvar() || (rId && S.registros.find(x => x.id === rId));
+    if (!r) { toast('Preencha ao menos um campo', 'erro'); return null; }
+    despejarGaveta = null; render(); abrirProntuario(pid, drawerConsulta, 'hist'); toast('Registro salvo no prontuário');
+    return r;
+  };
+  $('#rSave').onclick = concluir;
+  $('#rPdf').onclick = () => { const r = concluir(); if (r) pdfRegistro(r); };
+  $('#rPrint').onclick = () => { const r = concluir(); if (r) pdfRegistro(r, true); };
 }
 
 function tabHist(pid) {
@@ -1336,7 +1381,7 @@ function formPresc(pid) {
   };
   $('#dBody').onclick = e => {
     const rm = e.target.closest('[data-rm]');
-    if (rm) { ler(); f.itens.splice(+rm.dataset.rm, 1); formPresc(pid); }
+    if (rm) { ler(); f.itens.splice(+rm.dataset.rm, 1); formPresc(pid); $('#pxData').dispatchEvent(new Event('change', { bubbles: true })); }
     if (e.target.closest('#pxAdd')) { ler(); f.itens.push(itemVazio()); formPresc(pid); $(`#pxMed${f.itens.length - 1}`)?.focus(); }
   };
   // Medicamento já prescrito antes: completa quantidade, via e posologia
@@ -1348,20 +1393,41 @@ function formPresc(pid) {
     set('qtd', s.qtd); set('posologia', s.posologia);
     if (s.via) box.querySelector('[data-k="via"]').value = s.via;
   };
-  $('#dFoot').innerHTML = `<button class="btn ghost" id="pxCancel" style="margin-right:auto">Cancelar</button><button class="btn" id="pxPrint">${I.print}Salvar e imprimir</button><button class="btn" id="pxPdf">${I.pdf}Salvar e baixar PDF</button><button class="btn primary" id="pxSave">${I.check}Salvar prescrição</button>`;
-  $('#pxCancel').onclick = () => { prescForm = null; abrirProntuario(pid, drawerConsulta, 'presc'); };
-  const salvar = () => {
+  $('#dFoot').innerHTML = `<button class="btn ghost" id="pxCancel">Descartar</button><span class="sub auto-info" id="pxInfo">${f.id ? 'Salvo automaticamente' : 'Salva sozinha enquanto você digita'}</span><button class="btn" id="pxPrint">${I.print}Imprimir</button><button class="btn" id="pxPdf">${I.pdf}Baixar PDF</button><button class="btn primary" id="pxSave">${I.check}Concluir</button>`;
+  // A prescrição é criada no primeiro medicamento digitado e atualizada a cada pausa
+  let tPx = null;
+  const autoSalvar = () => {
+    clearTimeout(tPx); tPx = null;
+    if (!$('#pxData')) return null;
     ler();
     const itens = f.itens.map(i => ({ med: i.med.trim(), qtd: i.qtd.trim(), via: i.via, posologia: i.posologia.trim() })).filter(i => i.med);
-    if (!itens.length) { toast('Informe ao menos um medicamento', 'erro'); $('#pxMed0')?.focus(); return null; }
-    const rx = { id: uid(), pacienteId: pid, data: f.data || TODAY, itens, orientacoes: f.orientacoes.trim(), criadoEm: new Date().toISOString() };
-    S.prescricoes.push(rx); gravar('prescricoes', rx);
-    prescForm = null; abrirProntuario(pid, drawerConsulta, 'presc'); toast('Prescrição salva');
+    let rx = f.id && S.prescricoes.find(x => x.id === f.id);
+    if (!itens.length) { if (rx) { S.prescricoes = S.prescricoes.filter(x => x.id !== f.id); apagar('prescricoes', f.id); f.id = null; } return null; }
+    if (!rx) { rx = { id: uid(), pacienteId: pid, criadoEm: new Date().toISOString() }; S.prescricoes.push(rx); f.id = rx.id; }
+    Object.assign(rx, { data: f.data || TODAY, itens, orientacoes: f.orientacoes.trim() });
+    gravar('prescricoes', rx);
+    const info = $('#pxInfo'); if (info) info.textContent = 'Salvo automaticamente às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     return rx;
   };
-  $('#pxSave').onclick = salvar;
-  $('#pxPdf').onclick = () => { const rx = salvar(); if (rx) pdfReceita(rx); };
-  $('#pxPrint').onclick = () => { const rx = salvar(); if (rx) pdfReceita(rx, true); };
+  const agendar = () => { clearTimeout(tPx); tPx = setTimeout(autoSalvar, 700); const info = $('#pxInfo'); if (info) info.textContent = 'Salvando…'; };
+  despejarGaveta = () => { if (tPx) autoSalvar(); };
+  $('#dBody').addEventListener('input', agendar);
+  $('#dBody').addEventListener('change', agendar);
+  $('#pxCancel').onclick = () => {
+    clearTimeout(tPx); tPx = null;
+    const fechar = () => { despejarGaveta = null; prescForm = null; abrirProntuario(pid, drawerConsulta, 'presc'); };
+    if (!f.id) return fechar();
+    confirmar('Descartar esta prescrição? Ela sai da lista de prescrições do paciente.', () => { S.prescricoes = S.prescricoes.filter(x => x.id !== f.id); apagar('prescricoes', f.id); fechar(); toast('Prescrição descartada'); }, 'Descartar');
+  };
+  const concluir = () => {
+    const rx = autoSalvar() || (f.id && S.prescricoes.find(x => x.id === f.id));
+    if (!rx) { toast('Informe ao menos um medicamento', 'erro'); $('#pxMed0')?.focus(); return null; }
+    despejarGaveta = null; prescForm = null; abrirProntuario(pid, drawerConsulta, 'presc'); toast('Prescrição salva');
+    return rx;
+  };
+  $('#pxSave').onclick = concluir;
+  $('#pxPdf').onclick = () => { const rx = concluir(); if (rx) pdfReceita(rx); };
+  $('#pxPrint').onclick = () => { const rx = concluir(); if (rx) pdfReceita(rx, true); };
 }
 
 // ---------- Fotos ----------
@@ -1825,10 +1891,9 @@ function renderConfig() {
   const s = S.settings, pf = s.prof, lg = legado();
   $('#view').innerHTML = `
     <div class="page-head">
-      <div><h1>Configurações</h1><div class="sub">Horários da agenda e dados que saem no cabeçalho dos PDFs</div></div>
-      <button class="btn primary" data-a="salvarcfg">${I.check}Salvar</button>
+      <div><h1>Configurações</h1><div class="sub">Horários da agenda e dados que saem no cabeçalho dos PDFs · <span id="cfgInfo">as alterações são salvas sozinhas</span></div></div>
     </div>
-    <div class="grid" style="gap:20px">
+    <div class="grid" style="gap:20px" id="cfgForm">
       <div class="card"><div class="card-body">
         <p class="section-title">Agenda</p>
         <div class="grid g2">
@@ -1867,6 +1932,9 @@ function renderConfig() {
         </div>
       </div></div>
     </div>`;
+  const agendarCfg = e => { if (e.target.id === 'cImp') return; clearTimeout(tCfg); tCfg = setTimeout(salvarConfigAuto, 700); const i = $('#cfgInfo'); if (i) i.textContent = 'salvando…'; };
+  $('#cfgForm').addEventListener('input', agendarCfg);
+  $('#cfgForm').addEventListener('change', agendarCfg);
   $('#cExp').onclick = exportarCopia;
   $('#cImp').onchange = e => {
     const f = e.target.files[0]; if (!f) return;
@@ -1877,6 +1945,16 @@ function renderConfig() {
       } catch { toast('Arquivo de cópia inválido', 'erro'); }
     });
   };
+}
+let tCfg = null;
+function salvarConfigAuto() {
+  clearTimeout(tCfg); tCfg = null;
+  if (!$('#cIni')) return;
+  const dias = [...document.querySelectorAll('#cDias input:checked')].map(i => +i.value);
+  Object.assign(S.settings, { inicio: $('#cIni').value, fim: $('#cFim').value, dias, valorConsulta: parseValor($('#cValor').value) || 0 });
+  Object.assign(S.settings.prof, { nome: $('#cNome').value.trim(), registro: $('#cReg').value.trim(), especialidade: $('#cEsp').value.trim(), telefone: $('#cTel').value.trim(), endereco: $('#cEnd').value.trim(), social: $('#cSoc').value.trim() });
+  gravarConfig();
+  const i = $('#cfgInfo'); if (i) i.textContent = 'salvo automaticamente às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 function salvarConfig() {
   const dias = [...document.querySelectorAll('#cDias input:checked')].map(i => +i.value);
