@@ -595,8 +595,8 @@ async function exportarCopia() {
 const ultimaCopia = () => { try { return localStorage.getItem('prontuario.ultimaCopia'); } catch { return null; } };
 
 // ---------- Login ----------
-// "Manter conectada": o acesso fica guardado no aparelho por 30 dias (o servidor confere a validade).
-// Sem essa opção: some ao fechar o navegador, vale no máximo 12 horas e sai após 30 min parado.
+// Acesso fixo: depois de entrar, a pessoa fica conectada neste aparelho até clicar em "Sair"
+// (ou até a administradora bloquear o acesso ou trocar a senha dela).
 const lerLocal = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const TOKEN = 'prontuario.token', ULTIMO_EMAIL = 'prontuario.ultimoEmail', LEMBRAR = 'prontuario.lembrar', LEMBRAR_DIAS = 30, INATIVO_MIN = 30;
 const lerToken = () => { try { return sessionStorage.getItem(TOKEN) || localStorage.getItem(TOKEN); } catch { return null; } };
@@ -647,11 +647,9 @@ async function sair(msg) {
   try { if (token) await api('POST', '/api/sair'); } catch {}
   limparSessao(); if (msg) toast(msg);
 }
-// Aparelho parado por 30 minutos: volta para a tela de login (só quando não marcou "Manter conectada")
 let ultimaAtividade = Date.now();
 const marcarAtividade = () => { ultimaAtividade = Date.now(); };
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, marcarAtividade, { passive: true }));
-setInterval(() => { if (perfil && !sessaoLembrada && Date.now() - ultimaAtividade > INATIVO_MIN * 60000) sair('Por segurança, entre de novo.'); }, 60000);
 
 const msgLogin = e => ({
   senha_incorreta: 'E-mail ou senha incorretos.',
@@ -664,23 +662,19 @@ const msgLogin = e => ({
 
 function renderAcesso() {
   const logo = `<img src="${$('.brand-logo').src}" alt="" class="login-logo">`;
-  const caixaLembrar = `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
-          <input type="checkbox" id="acLembrar" ${lerLocal(LEMBRAR) === '0' ? '' : 'checked'}> Manter conectada neste aparelho por ${LEMBRAR_DIAS} dias</label>`;
   $('#view').innerHTML = estado === 'primeiro' ? `<div class="card login">${logo}<h1>Primeiro acesso</h1>
       <div class="sub" style="margin-bottom:16px">Crie a conta de administrador. Ela cadastra as outras pessoas em Equipe.</div>
       <form id="fAcesso" class="grid">
         <div><label class="f" for="acNome">Nome</label><input class="input" id="acNome" autocomplete="name" required></div>
         <div><label class="f" for="acEmail">E-mail</label><input class="input" id="acEmail" type="email" autocomplete="email" required></div>
         <div><label class="f" for="acSenha">Senha (mínimo 8 caracteres)</label><input class="input" id="acSenha" type="password" autocomplete="new-password" minlength="8" required></div>
-        ${caixaLembrar}
-        <button class="btn primary" type="submit">Criar e entrar</button>
+        <button class="btn primary" type="submit">Criar</button>
       </form><div class="sub" style="margin-top:14px">Anote a senha: ela não pode ser recuperada por e-mail.</div>
       <div class="login-links" style="justify-content:center"><button class="lnk" id="acIrEntrar">Já tenho conta · Entrar</button></div></div>`
     : `<div class="card login">${logo}<h1>Entrar</h1>
       <form id="fAcesso" class="grid">
         <div><label class="f" for="acEmail">E-mail</label><input class="input" id="acEmail" type="email" autocomplete="email" required></div>
         <div><label class="f" for="acSenha">Senha</label><input class="input" id="acSenha" type="password" autocomplete="current-password" required></div>
-        ${caixaLembrar}
         <button class="btn primary" type="submit">Entrar</button>
       </form>
       <div class="login-links"><button class="lnk" id="acEsq">Esqueci minha senha</button>${semAdmin ? '<button class="lnk" id="acIrCriar">Criar a primeira conta</button>' : ''}</div></div>`;
@@ -691,8 +685,7 @@ function renderAcesso() {
   if (estado === 'login' && lerLocal(ULTIMO_EMAIL)) { $('#acEmail').value = lerLocal(ULTIMO_EMAIL); setTimeout(() => $('#acSenha')?.focus(), 30); }
   form.onsubmit = async ev => {
     ev.preventDefault(); btn.disabled = true;
-    const lembrar = $('#acLembrar').checked, email = $('#acEmail').value.trim().toLowerCase(), senha = $('#acSenha').value;
-    try { localStorage.setItem(LEMBRAR, lembrar ? '1' : '0'); } catch {}
+    const lembrar = true, email = $('#acEmail').value.trim().toLowerCase(), senha = $('#acSenha').value;
     try {
       const d = estado === 'primeiro'
         ? await api('POST', '/api/primeiro-acesso', { nome: $('#acNome').value.trim(), email, senha, lembrar })
