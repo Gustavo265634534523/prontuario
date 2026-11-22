@@ -136,6 +136,48 @@
   .grid { display: grid; gap: 16px; }
   .g2 { grid-template-columns: 1fr 1fr; }
   .g3 { grid-template-columns: repeat(3, 1fr); }
+  .grid[hidden], .grid > [hidden] { display: none !important; }
+  /* Financeiro em forma de extrato */
+  .ext-resumo .in, .ext-v.in, .res-v.in, .ext-ic.in { color: var(--good); }
+  .ext-resumo .out, .ext-v.out, .res-v.out, .ext-ic.out, .ext-dia-h .out { color: var(--danger); }
+  .ext-per button { padding: 6px 12px; }
+  .ext-resumo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 18px 20px; margin-bottom: 14px; text-align: center; }
+  .ext-resumo > div > span { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+  .ext-resumo > div > b { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ext-formas { grid-column: 1 / -1; border-top: 1px solid var(--border); padding-top: 12px; }
+  .ext-barra { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--stripe); }
+  .ext-barra i, .ext-leg i { display: block; }
+  .ext-leg { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+  .ext-leg span { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+  .ext-leg i { width: 9px; height: 9px; border-radius: 50%; }
+  .pix { background: #1d9e75; } .cartao { background: #7f77dd; } .dinheiro { background: #b08b45; }
+  .ext-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .ext-btn-in { color: var(--good); border-color: #bcd9c3; background: var(--good-soft); font-weight: 600; }
+  .ext-btn-out { color: var(--danger); border-color: #f0cfca; background: var(--danger-soft); font-weight: 600; }
+  .ext-dia { margin-bottom: 12px; padding: 4px 0; }
+  .ext-dia-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 18px 8px; font-size: 13.5px; }
+  .ext-dia-h > span { color: var(--muted); font-size: 12.5px; }
+  .ext-it { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 18px; border: 0; border-top: 1px solid var(--border); background: none; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+  .ext-it:hover { background: var(--surface-2); }
+  .ext-ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .ext-ic svg { width: 16px; height: 16px; }
+  .ext-ic.in { background: var(--good-soft); } .ext-ic.out { background: var(--danger-soft); }
+  .ext-tx { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+  .ext-tx b { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ext-tx span { font-size: 12.5px; color: var(--muted); }
+  .ext-v { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 650; }
+  .ext-vazio { padding: 28px 20px; text-align: center; display: grid; gap: 6px; }
+  @media (max-width: 600px) {
+    .ext-resumo { padding: 14px 10px; gap: 6px; }
+    .ext-resumo > div > b { font-size: 15.5px; }
+    .ext-resumo > div > span { font-size: 11.5px; }
+    .ext-acoes .btn { flex: 1; justify-content: center; }
+    .ext-nav { width: 100%; flex-wrap: nowrap; }
+    .ext-nav .ext-per { flex: 1; flex-wrap: nowrap; }
+    .ext-nav .ext-per button { flex: 1; padding: 6px 4px; }
+    .ext-it { padding: 11px 14px; gap: 10px; }
+    .ext-dia-h { padding: 12px 14px 8px; }
+  }
 
   /* Agenda */
   .agenda { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
@@ -457,6 +499,9 @@ const I = {
   edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>',
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  entra: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M16 17H7V8"/></svg>',
+  sai: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>',
+  menos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>',
   image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>',
 };
 
@@ -1138,10 +1183,15 @@ $('#view').addEventListener('click', e => {
   else if (a === 'legado') { const d = legado(); if (!d) return; el.disabled = true; importar(d, true).then(ok => { if (ok) { try { localStorage.setItem('prontuario.migrado', TODAY); localStorage.setItem(MIGRADO_NUVEM, TODAY); } catch {} } render(); }); return; }
   else if (a === 'pagar') return pagarConsulta(id);
   else if (a === 'irDia') { dia = el.dataset.d; mes = dia.slice(0, 7); buscaAg = ''; window.scrollTo(0, 0); }
-  else if (a === 'irCaixa') { buscaFin = ''; mudarDiaCaixa(el.dataset.d); window.scrollTo(0, 0); }
+  else if (a === 'irCaixa') { buscaFin = ''; finPer = 'dia'; mudarDiaCaixa(el.dataset.d); window.scrollTo(0, 0); }
+  else if (a === 'finPer') { finPer = el.dataset.p; }
+  else if (a === 'finNovaEnt') return modalEntrada({ data: caixaDia === TODAY || finPer === 'dia' ? caixaDia : TODAY });
+  else if (a === 'finNovaDesp') return modalDespesa(null, null);
+  else if (a === 'finEnt') return modalEntrada(null, el.dataset.d, +el.dataset.i);
+  else if (a === 'finDesp') return modalDespesa(el.dataset.d, el.dataset.id);
   else if (a === 'limparBusca') { if (el.dataset.b === 'buscaAg') buscaAg = ''; else if (el.dataset.b === 'buscaFin') buscaFin = ''; else busca = ''; render(); const n = document.getElementById(el.dataset.b); if (n) n.focus(); return; }
   else if (a === 'cxHoje') mudarDiaCaixa(TODAY);
-  else if (a === 'cxPrev' || a === 'cxNext') mudarDiaCaixa(addDays(caixaDia, a === 'cxNext' ? 1 : -1));
+  else if (a === 'cxPrev' || a === 'cxNext') { salvarCaixa(); moverPeriodo(a === 'cxNext' ? 1 : -1); }
   else if (a === 'cxLinha') { cxExtra += 5; }
   else if (a === 'cxPdf' || a === 'cxPrint') { salvarCaixa(); return pdfCaixa(a === 'cxPrint'); }
   else if (a === 'novopac') return modalPaciente();
@@ -1735,7 +1785,7 @@ const refrescarFin = () => { if (drawerPac && drawerTab === 'fin') abrirProntuar
 function caixaDoDia(d) {
   const x = S.caixa.find(c => c.id === d);
   const c = x ? clone(x) : { id: d, responsavel: '', linhas: [], observacoes: '' };
-  c.id = d; c.responsavel = c.responsavel || ''; c.observacoes = c.observacoes || '';
+  c.id = d; c.responsavel = c.responsavel || ''; c.observacoes = c.observacoes || ''; c.despesas = (c.despesas || []).slice();
   c.linhas = (c.linhas || []).map(l => Object.assign(linhaVazia(), l));
   return c;
 }
@@ -1751,89 +1801,196 @@ function salvarCaixa() {
   cxSujo = false;
   const linhas = cx.linhas.slice();
   while (linhas.length && !linhaUsada(linhas[linhas.length - 1])) linhas.pop();
-  const doc = { id: cx.id, responsavel: cx.responsavel, observacoes: cx.observacoes, linhas };
+  const doc = { id: cx.id, responsavel: cx.responsavel, observacoes: cx.observacoes, linhas, despesas: cx.despesas || [] };
   const i = S.caixa.findIndex(c => c.id === cx.id); if (i >= 0) S.caixa[i] = clone(doc); else S.caixa.push(clone(doc));
   gravar('caixa', doc);
 }
 function sujar() { cxSujo = true; clearTimeout(cxTimer); cxTimer = setTimeout(salvarCaixa, 900); }
 function mudarDiaCaixa(d) { salvarCaixa(); caixaDia = d; cx = null; cxExtra = 0; }
 
+// ---------- Financeiro em forma de extrato (entradas e despesas) ----------
+// Os dados continuam no mesmo lugar: um documento por dia em S.caixa, com "linhas" (entradas) e "despesas".
+let finPer = 'semana';
+const CATS_DESPESA = ['Material', 'Produtos', 'Aluguel', 'Contas (luz, água, internet)', 'Salários', 'Impostos', 'Marketing', 'Outros'];
+const formasDe = l => PAGTOS.filter(([k]) => +l[k]).map(([, r]) => r).join(' + ');
+const horaAgora = () => { const n = new Date(); return toHM(n.getHours() * 60 + n.getMinutes()); };
+function periodoFin() {
+  const d = parseISO(caixaDia);
+  if (finPer === 'dia') return [caixaDia, caixaDia, fmtDate(caixaDia, { weekday: 'long', day: 'numeric', month: 'long' })];
+  if (finPer === 'semana') {
+    const ini = addDays(caixaDia, -((d.getDay() + 6) % 7)), fim = addDays(ini, 6); // semana de segunda a domingo
+    return [ini, fim, `${fmtDate(ini, { day: 'numeric', month: 'short' })} a ${fmtDate(fim, { day: 'numeric', month: 'short' })}`.replace(/\./g, '')];
+  }
+  const ini = iso(new Date(d.getFullYear(), d.getMonth(), 1)), fim = iso(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+  const nm = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  return [ini, fim, nm[0].toUpperCase() + nm.slice(1)];
+}
+function moverPeriodo(n) {
+  if (finPer === 'dia') caixaDia = addDays(caixaDia, n);
+  else if (finPer === 'semana') caixaDia = addDays(caixaDia, 7 * n);
+  else { const d = parseISO(caixaDia); caixaDia = iso(new Date(d.getFullYear(), d.getMonth() + n, 1)); }
+  cx = null;
+}
+const rotuloDia = d => (d === TODAY ? 'Hoje' : d === addDays(TODAY, -1) ? 'Ontem' : (s => s[0].toUpperCase() + s.slice(1))(fmtDate(d, { weekday: 'long' }))) + ', ' + fmtDate(d, { day: 'numeric', month: 'long' });
+function gravarDia(c) {
+  c.linhas = (c.linhas || []).filter(linhaUsada);
+  c.despesas = c.despesas || [];
+  const i = S.caixa.findIndex(x => x.id === c.id); if (i >= 0) S.caixa[i] = clone(c); else S.caixa.push(clone(c));
+  if (cx && cx.id === c.id) cx = null;
+  return gravar('caixa', c);
+}
+
 function renderFinanceiro() {
   if (buscaFin.trim()) return renderBuscaFin();
-  if (!cx || cx.id !== caixaDia || !cxSujo) cx = caixaDoDia(caixaDia);
-  let ultima = -1; cx.linhas.forEach((l, i) => { if (linhaUsada(l)) ultima = i; });
-  const n = Math.max(MIN_LINHAS, ultima + 2) + cxExtra;
-  while (cx.linhas.length < n) cx.linhas.push(linhaVazia());
-  const t = totaisCaixa(cx);
-  const procs = [...new Set([...Object.values(TIPOS).map(x => x.nome), ...S.caixa.flatMap(c => (c.linhas || []).map(l => l.procedimento)).filter(Boolean)])];
-  const label = fmtDate(caixaDia, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const v = x => x ? esc(fmtNum(x)) : '';
+  const [ini, fim, rotulo] = periodoFin();
+  let entrou = 0, saiu = 0; const pg = { pix: 0, cartao: 0, dinheiro: 0 };
+  const grupos = S.caixa.filter(c => c.id >= ini && c.id <= fim).map(c => {
+    const ent = (c.linhas || []).map((l, i) => ({ l, i })).filter(x => linhaUsada(x.l));
+    const des = c.despesas || [];
+    const e = ent.reduce((s, x) => s + totalLinha(x.l), 0), sd = des.reduce((s, x) => s + (+x.valor || 0), 0);
+    ent.forEach(x => PAGTOS.forEach(([k]) => { pg[k] += +x.l[k] || 0; }));
+    entrou += e; saiu += sd;
+    const itens = [...ent.map(x => ({ tipo: 'e', hora: x.l.hora || '', l: x.l, i: x.i })), ...des.map(x => ({ tipo: 'd', hora: x.hora || '', x }))]
+      .sort((a, b) => b.hora.localeCompare(a.hora));
+    return { dia: c.id, itens, saldo: e - sd };
+  }).filter(g => g.itens.length).sort((a, b) => b.dia.localeCompare(a.dia));
+  const sobrou = entrou - saiu, pct = k => entrou ? Math.round(pg[k] / entrou * 100) : 0;
+  const nomePer = { dia: 'no dia', semana: 'na semana', mes: 'no mês' }[finPer];
+  const item = (g, it) => it.tipo === 'e'
+    ? `<button class="ext-it" data-a="finEnt" data-d="${g.dia}" data-i="${it.i}">
+        <span class="ext-ic in">${I.entra}</span>
+        <span class="ext-tx"><b>${esc([it.l.cliente, it.l.procedimento].filter(Boolean).join(' · ') || 'Entrada')}</b><span>${esc([formasDe(it.l), it.l.hora].filter(Boolean).join(' · '))}</span></span>
+        <b class="ext-v in">+ ${fmtBRL(totalLinha(it.l))}</b></button>`
+    : `<button class="ext-it" data-a="finDesp" data-d="${g.dia}" data-id="${esc(it.x.id)}">
+        <span class="ext-ic out">${I.sai}</span>
+        <span class="ext-tx"><b>${esc(it.x.descricao || 'Despesa')}</b><span>${esc(['Despesa', it.x.categoria, (PAGTOS.find(([k]) => k === it.x.forma) || [])[1], it.x.hora].filter(Boolean).join(' · '))}</span></span>
+        <b class="ext-v out">− ${fmtBRL(it.x.valor)}</b></button>`;
   $('#view').innerHTML = `
     <div class="page-head">
-      <div><h1>Financeiro</h1><div class="sub">${caixaDia === TODAY ? 'Hoje · ' : ''}${esc(label)}</div></div>
-      <div class="daynav">
+      <div><h1>Financeiro</h1><div class="sub">${esc(rotulo)}</div></div>
+      <div class="daynav ext-nav">
+        <div class="seg ext-per">${[['dia', 'Dia'], ['semana', 'Semana'], ['mes', 'Mês']].map(([k, r]) => `<button data-a="finPer" data-p="${k}" class="${finPer === k ? 'on' : ''}">${r}</button>`).join('')}</div>
         <button class="btn" data-a="cxHoje">Hoje</button>
-        <button class="icon-btn" data-a="cxPrev" title="Dia anterior">${I.left}</button>
-        <button class="icon-btn" data-a="cxNext" title="Próximo dia">${I.right}</button>
-        <button class="btn" data-a="cxPdf">${I.pdf}Baixar PDF</button>
-        <button class="btn primary" data-a="cxPrint">${I.print}Imprimir</button>
+        <button class="icon-btn" data-a="cxPrev" title="Anterior">${I.left}</button>
+        <button class="icon-btn" data-a="cxNext" title="Próximo">${I.right}</button>
       </div>
     </div>
-    ${campoBusca('buscaFin', buscaFin, 'Buscar no caixa: nome da cliente ou procedimento')}
-    <div class="folha" id="folha">
-      <div class="folha-tit"><h2>CONTROLE DE CAIXA</h2><div>Consultório de Estética &nbsp;|&nbsp; Registro diário de recebimentos</div></div>
-      <div class="folha-info">
-        <label>Data: <input type="date" id="cxData" value="${caixaDia}"></label>
-        <label>Responsável: <input id="cxResp" value="${esc(cx.responsavel)}" placeholder="Quem fecha o caixa"></label>
-      </div>
-      <div class="table-wrap"><table class="cx">
-        <thead><tr><th class="n">Nº</th><th>Nome da cliente</th><th>Procedimento</th><th class="w">Pix (R$)</th><th class="w">Cartão (R$)</th><th class="w">Dinheiro (R$)</th><th class="w">Total (R$)</th></tr></thead>
-        <tbody>${cx.linhas.map((l, i) => `<tr>
-          <td class="n">${i + 1}</td>
-          <td><input id="cx-${i}-cliente" data-i="${i}" data-k="cliente" list="cxPac" value="${esc(l.cliente)}" aria-label="Nome da cliente, linha ${i + 1}"></td>
-          <td><input id="cx-${i}-procedimento" data-i="${i}" data-k="procedimento" list="cxProc" value="${esc(l.procedimento)}" aria-label="Procedimento, linha ${i + 1}"></td>
-          ${PAGTOS.map(([k, r]) => `<td><input class="r" id="cx-${i}-${k}" data-i="${i}" data-k="${k}" inputmode="decimal" value="${v(l[k])}" aria-label="${r}, linha ${i + 1}"></td>`).join('')}
-          <td class="r tot" id="cx-t${i}">${v(totalLinha(l))}</td>
-        </tr>`).join('')}</tbody>
-      </table></div>
-      <button class="btn ghost" data-a="cxLinha" style="margin-top:8px">${I.plus}Adicionar linhas</button>
-      <h3 class="folha-sec">FECHAMENTO DO CAIXA</h3>
-      <div class="fech">
-        <div><span>Total Pix</span><b id="cxTpix">${fmtBRL(t.pix)}</b></div>
-        <div><span>Total Cartão</span><b id="cxTcartao">${fmtBRL(t.cartao)}</b></div>
-        <div><span>Total Dinheiro</span><b id="cxTdinheiro">${fmtBRL(t.dinheiro)}</b></div>
-        <div class="geral"><span>TOTAL RECEBIDO</span><b id="cxTtotal">${fmtBRL(t.total)}</b></div>
-      </div>
-      <label class="folha-obs">Observações:<textarea id="cxObs" rows="2">${esc(cx.observacoes)}</textarea></label>
-      <div class="folha-rod">Controle interno · Preencher uma linha por cliente e separar por forma de pagamento</div>
+    <div class="card ext-resumo">
+      <div><span>Entrou</span><b class="in">+ ${fmtBRL(entrou)}</b></div>
+      <div><span>Saiu</span><b class="out">− ${fmtBRL(saiu)}</b></div>
+      <div><span>Sobrou ${nomePer}</span><b class="${sobrou < 0 ? 'out' : ''}">${fmtBRL(sobrou)}</b></div>
+      ${entrou ? `<div class="ext-formas">
+        <div class="ext-barra"><i style="width:${pct('pix')}%" class="pix"></i><i style="width:${pct('cartao')}%" class="cartao"></i><i style="width:${pct('dinheiro')}%" class="dinheiro"></i></div>
+        <div class="ext-leg">${PAGTOS.filter(([k]) => pg[k]).map(([k, r]) => `<span><i class="${k}"></i>${r} ${fmtBRL(pg[k])}</span>`).join('')}</div>
+      </div>` : ''}
     </div>
-    <datalist id="cxPac">${S.pacientes.map(p => `<option value="${esc(p.nome)}">`).join('')}</datalist>
-    <datalist id="cxProc">${procs.map(p => `<option value="${esc(p)}">`).join('')}</datalist>`;
-  const folha = $('#folha');
-  folha.oninput = e => {
-    const x = e.target;
-    if (x.id === 'cxResp') { cx.responsavel = x.value; return sujar(); }
-    if (x.id === 'cxObs') { cx.observacoes = x.value; return sujar(); }
-    const k = x.dataset.k; if (!k) return;
-    const i = +x.dataset.i, l = cx.linhas[i];
-    if (k === 'cliente' || k === 'procedimento') {
-      l[k] = x.value;
-      if (k === 'cliente') { const p = S.pacientes.find(p => p.nome.toLowerCase() === x.value.trim().toLowerCase()); l.pacienteId = p ? p.id : ''; }
-    } else {
-      l[k] = parseValor(x.value);
-      $(`#cx-t${i}`).textContent = totalLinha(l) ? fmtNum(totalLinha(l)) : '';
-      atualizarFech();
-    }
-    sujar();
-  };
-  folha.onchange = e => {
-    const x = e.target;
-    if (x.id === 'cxData') { if (x.value) { mudarDiaCaixa(x.value); render(); } return; }
-    const k = x.dataset.k;
-    if (PAGTOS.some(([p]) => p === k)) { const val = cx.linhas[+x.dataset.i][k]; x.value = val ? fmtNum(val) : ''; }
-  };
+    <div class="ext-acoes">
+      <button class="btn ext-btn-in" data-a="finNovaEnt">${I.plus}Entrada</button>
+      <button class="btn ext-btn-out" data-a="finNovaDesp">${I.menos}Despesa</button>
+      ${finPer === 'dia' ? `<button class="btn ghost" data-a="cxPdf">${I.pdf}PDF do caixa</button><button class="btn ghost" data-a="cxPrint">${I.print}Imprimir</button>` : ''}
+    </div>
+    ${campoBusca('buscaFin', buscaFin, 'Buscar: nome da cliente, procedimento ou despesa')}
+    ${grupos.length ? grupos.map(g => `<div class="card ext-dia">
+      <div class="ext-dia-h"><b>${esc(rotuloDia(g.dia))}</b><span>saldo do dia <b class="${g.saldo < 0 ? 'out' : ''}">${fmtBRL(g.saldo)}</b></span></div>
+      ${g.itens.map(it => item(g, it)).join('')}
+    </div>`).join('') : `<div class="card ext-vazio"><b>Nenhum lançamento ${nomePer}</b><span class="sub">Use <b>+ Entrada</b> para um pagamento recebido e <b>− Despesa</b> para um gasto.</span></div>`}`;
   ligarBusca('buscaFin', v => { buscaFin = v; });
 }
+
+// Entrada: pagamento recebido (criar ou editar). pre = { data, cliente, procedimento, pacienteId, consultaId }
+function modalEntrada(pre, dia, idx) {
+  pre = pre || {};
+  const editando = dia != null;
+  const l = editando ? Object.assign(linhaVazia(), (S.caixa.find(c => c.id === dia) || { linhas: [] }).linhas[idx]) : Object.assign(linhaVazia(), pre || {});
+  const usadas = PAGTOS.filter(([k]) => +l[k] > 0);
+  let forma = usadas.length > 1 ? 'dividir' : (usadas[0] || ['pix'])[0];
+  const valorIni = editando ? totalLinha(l) : (S.settings.valorConsulta || 0);
+  const procs = [...new Set([...Object.values(TIPOS).map(x => x.nome), ...S.caixa.flatMap(c => (c.linhas || []).map(x => x.procedimento)).filter(Boolean)])];
+  openModal(`${modalHead(editando ? 'Editar entrada' : 'Nova entrada', 'Pagamento recebido')}
+    <div class="card-body grid">
+      <div><label class="f" for="enCli">Cliente</label><input class="input" id="enCli" list="enPac" autocomplete="off" value="${esc(l.cliente)}" placeholder="Nome da cliente"><datalist id="enPac">${S.pacientes.map(p => `<option value="${esc(p.nome)}">`).join('')}</datalist></div>
+      <div><label class="f" for="enProc">Procedimento</label><input class="input" id="enProc" list="enProcs" autocomplete="off" value="${esc(l.procedimento)}" placeholder="Limpeza de pele, peeling…"><datalist id="enProcs">${procs.map(p => `<option value="${esc(p)}">`).join('')}</datalist></div>
+      <div><label class="f">Forma de pagamento</label><div class="seg" id="enForma">${[...PAGTOS, ['dividir', 'Dividir']].map(([k, r]) => `<button type="button" data-v="${k}" class="${k === forma ? 'on' : ''}">${r}</button>`).join('')}</div></div>
+      <div id="enUm"><label class="f" for="enValor">Valor (R$)</label><input class="input" id="enValor" inputmode="decimal" value="${valorIni ? esc(fmtNum(valorIni)) : ''}" placeholder="0,00"></div>
+      <div class="grid g3" id="enVarios">${PAGTOS.map(([k, r]) => `<div><label class="f" for="en_${k}">${r} (R$)</label><input class="input" id="en_${k}" inputmode="decimal" value="${+l[k] ? esc(fmtNum(l[k])) : ''}" placeholder="0,00"></div>`).join('')}</div>
+      <div class="grid g2">
+        <div><label class="f" for="enData">Data</label><input class="input" type="date" id="enData" value="${esc(editando ? dia : (pre.data || TODAY))}"></div>
+        <div><label class="f" for="enHora">Horário</label><input class="input" type="time" id="enHora" value="${esc(l.hora || (editando ? '' : horaAgora()))}"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      ${editando ? `<button class="btn ghost danger" id="enDel" style="margin-right:auto">${I.trash}Excluir</button>` : ''}
+      <button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" id="enOk">Salvar</button>
+    </div>`);
+  const mostrar = () => { $('#enUm').hidden = forma === 'dividir'; $('#enVarios').hidden = forma !== 'dividir'; };
+  mostrar();
+  $('#enForma').onclick = e => { const b = e.target.closest('button'); if (!b) return; forma = b.dataset.v; $('#enForma').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); mostrar(); };
+  setTimeout(() => (l.cliente ? $('#enValor') : $('#enCli'))?.focus(), 60);
+  $('#enOk').onclick = () => {
+    const vals = { pix: 0, cartao: 0, dinheiro: 0 };
+    if (forma === 'dividir') PAGTOS.forEach(([k]) => { vals[k] = parseValor($('#en_' + k).value); });
+    else vals[forma] = parseValor($('#enValor').value);
+    if (!(vals.pix + vals.cartao + vals.dinheiro > 0)) { toast('Informe o valor', 'erro'); return (forma === 'dividir' ? $('#en_pix') : $('#enValor')).focus(); }
+    const data = $('#enData').value || caixaDia, nome = $('#enCli').value.trim();
+    const px = S.pacientes.find(p => p.nome.toLowerCase() === nome.toLowerCase());
+    const nova = Object.assign({}, l, { id: l.id || uid(), cliente: nome, procedimento: $('#enProc').value.trim(), hora: $('#enHora').value, pacienteId: px ? px.id : (l.pacienteId || ''), consultaId: l.consultaId || '' }, vals);
+    delete nova.data;
+    if (editando) {
+      const velho = caixaDoDia(dia);
+      if (dia === data) { velho.linhas[idx] = nova; gravarDia(velho); }
+      else { velho.linhas.splice(idx, 1); gravarDia(velho); const novo = caixaDoDia(data); novo.linhas.push(nova); gravarDia(novo); }
+    } else { const c = caixaDoDia(data); c.linhas.push(nova); gravarDia(c); }
+    closeModal(); render(); refrescarFin();
+    toast(editando ? 'Entrada atualizada' : `Entrada lançada em ${fmtDate(data)}`);
+  };
+  if (editando) $('#enDel').onclick = () => confirmar('Excluir esta entrada do caixa?', () => {
+    const c = caixaDoDia(dia); c.linhas.splice(idx, 1); gravarDia(c); render(); refrescarFin(); toast('Entrada excluída');
+  }, 'Excluir entrada');
+}
+
+// Despesa: gasto da clínica (criar ou editar)
+function modalDespesa(dia, id) {
+  const c0 = dia ? S.caixa.find(c => c.id === dia) : null;
+  const d = (c0 && (c0.despesas || []).find(x => x.id === id)) || { descricao: '', categoria: '', valor: 0, forma: 'pix', hora: horaAgora() };
+  const editando = !!d.id;
+  let forma = d.forma || 'pix';
+  const cats = [...new Set([...CATS_DESPESA, ...S.caixa.flatMap(c => (c.despesas || []).map(x => x.categoria)).filter(Boolean)])];
+  openModal(`${modalHead(editando ? 'Editar despesa' : 'Nova despesa', 'Gasto da clínica')}
+    <div class="card-body grid">
+      <div><label class="f" for="dsDesc">Descrição</label><input class="input" id="dsDesc" value="${esc(d.descricao)}" placeholder="Compra de ácido hialurônico, conta de luz…"></div>
+      <div class="grid g2">
+        <div><label class="f" for="dsCat">Categoria</label><input class="input" id="dsCat" list="dsCats" autocomplete="off" value="${esc(d.categoria)}" placeholder="Material"><datalist id="dsCats">${cats.map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
+        <div><label class="f" for="dsValor">Valor (R$)</label><input class="input" id="dsValor" inputmode="decimal" value="${d.valor ? esc(fmtNum(d.valor)) : ''}" placeholder="0,00"></div>
+      </div>
+      <div><label class="f">Pago com</label><div class="seg" id="dsForma">${PAGTOS.map(([k, r]) => `<button type="button" data-v="${k}" class="${k === forma ? 'on' : ''}">${r}</button>`).join('')}</div></div>
+      <div class="grid g2">
+        <div><label class="f" for="dsData">Data</label><input class="input" type="date" id="dsData" value="${esc(dia || (finPer === 'dia' ? caixaDia : TODAY))}"></div>
+        <div><label class="f" for="dsHora">Horário</label><input class="input" type="time" id="dsHora" value="${esc(d.hora || '')}"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      ${editando ? `<button class="btn ghost danger" id="dsDel" style="margin-right:auto">${I.trash}Excluir</button>` : ''}
+      <button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" id="dsOk">Salvar</button>
+    </div>`);
+  setTimeout(() => $('#dsDesc')?.focus(), 60);
+  $('#dsForma').onclick = e => { const b = e.target.closest('button'); if (!b) return; forma = b.dataset.v; $('#dsForma').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); };
+  $('#dsOk').onclick = () => {
+    const descricao = $('#dsDesc').value.trim(), valor = parseValor($('#dsValor').value);
+    if (!descricao) { toast('Informe a descrição', 'erro'); return $('#dsDesc').focus(); }
+    if (!(valor > 0)) { toast('Informe o valor', 'erro'); return $('#dsValor').focus(); }
+    const data = $('#dsData').value || caixaDia;
+    const nova = { id: d.id || uid(), descricao, categoria: $('#dsCat').value.trim(), valor, forma, hora: $('#dsHora').value };
+    if (editando && dia !== data) { const v = caixaDoDia(dia); v.despesas = v.despesas.filter(x => x.id !== d.id); gravarDia(v); }
+    const c = caixaDoDia(data); const i = c.despesas.findIndex(x => x.id === nova.id);
+    if (i >= 0) c.despesas[i] = nova; else c.despesas.push(nova);
+    gravarDia(c);
+    closeModal(); render(); toast(editando ? 'Despesa atualizada' : `Despesa lançada em ${fmtDate(data)}`);
+  };
+  if (editando) $('#dsDel').onclick = () => confirmar('Excluir esta despesa?', () => {
+    const c = caixaDoDia(dia); c.despesas = c.despesas.filter(x => x.id !== d.id); gravarDia(c); render(); toast('Despesa excluída');
+  }, 'Excluir despesa');
+}
+
 function atualizarFech() {
   const t = totaisCaixa(cx);
   PAGTOS.forEach(([k]) => { $(`#cxT${k}`).textContent = fmtBRL(t[k]); });
@@ -1846,54 +2003,28 @@ function pagarConsulta(cid) {
   if (noCaixa(cid)) { mudarDiaCaixa(c.data); return go('financeiro'); }
   abrirAddCaixa({ data: c.data, cliente: p.nome, pacienteId: c.pacienteId, procedimento: tipoInfo(c.tipo).nome, consultaId: cid });
 }
-function abrirAddCaixa(pre) {
-  let forma = 'pix';
-  openModal(`${modalHead('Adicionar ao caixa', esc(fmtLongo(pre.data)))}
-    <div class="card-body grid">
-      <div><label class="f" for="acCli">Nome da cliente</label><input class="input" id="acCli" list="acPac" value="${esc(pre.cliente)}"><datalist id="acPac">${S.pacientes.map(p => `<option value="${esc(p.nome)}">`).join('')}</datalist></div>
-      <div><label class="f" for="acProc">Procedimento</label><input class="input" id="acProc" value="${esc(pre.procedimento)}"></div>
-      <div class="grid g2">
-        <div><label class="f" for="acValor">Valor (R$)</label><input class="input" id="acValor" inputmode="decimal" value="${S.settings.valorConsulta ? esc(fmtNum(S.settings.valorConsulta)) : ''}" placeholder="0,00"></div>
-        <div><label class="f">Forma de pagamento</label><div class="seg" id="acForma">${PAGTOS.map(([k, r]) => `<button data-v="${k}" class="${k === forma ? 'on' : ''}">${r}</button>`).join('')}</div></div>
-      </div>
-    </div>
-    <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" id="acOk">Adicionar ao caixa</button></div>`);
-  setTimeout(() => $('#acValor')?.focus(), 60);
-  $('#acForma').onclick = e => { const b = e.target.closest('button'); if (!b) return; forma = b.dataset.v; $('#acForma').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); };
-  $('#acOk').onclick = () => {
-    const valor = parseValor($('#acValor').value);
-    if (!(valor > 0)) { toast('Informe o valor', 'erro'); return $('#acValor').focus(); }
-    if (cx && cx.id === pre.data) salvarCaixa();
-    const c = caixaDoDia(pre.data);
-    c.linhas = c.linhas.filter(linhaUsada);
-    const nome = $('#acCli').value.trim(), px = S.pacientes.find(p => p.nome.toLowerCase() === nome.toLowerCase());
-    c.linhas.push(Object.assign(linhaVazia(), { cliente: nome, procedimento: $('#acProc').value.trim(), pacienteId: px ? px.id : (pre.pacienteId || ''), consultaId: pre.consultaId || '', [forma]: valor }));
-    const i = S.caixa.findIndex(x => x.id === c.id); if (i >= 0) S.caixa[i] = clone(c); else S.caixa.push(clone(c));
-    if (cx && cx.id === c.id) cx = null;
-    gravar('caixa', c);
-    closeModal(); render(); refrescarFin();
-    toast(`Adicionado ao caixa de ${fmtDate(c.id)}`);
-  };
-}
+function abrirAddCaixa(pre) { modalEntrada(pre); }
 
 // Busca no financeiro: lançamentos de qualquer dia com o nome ou procedimento procurado
 function renderBuscaFin() {
   salvarCaixa();
   const q = buscaFin;
-  const achados = S.caixa.flatMap(c => (c.linhas || []).filter(l => linhaUsada(l) && casa(q, l.cliente, l.procedimento)).map(l => ({ dia: c.id, l })))
-    .sort((a, b) => b.dia.localeCompare(a.dia));
-  const soma = achados.reduce((t, x) => t + totalLinha(x.l), 0);
+  const achados = [
+    ...S.caixa.flatMap(c => (c.linhas || []).filter(l => linhaUsada(l) && casa(q, l.cliente, l.procedimento)).map(l => ({ dia: c.id, l, v: totalLinha(l) }))),
+    ...S.caixa.flatMap(c => (c.despesas || []).filter(x => casa(q, x.descricao, x.categoria)).map(x => ({ dia: c.id, l: { cliente: x.descricao, procedimento: 'Despesa' + (x.categoria ? ' · ' + x.categoria : '') }, v: -(+x.valor || 0) })))
+  ].sort((a, b) => b.dia.localeCompare(a.dia));
+  const soma = achados.reduce((t, x) => t + x.v, 0);
   $('#view').innerHTML = `
     <div class="page-head">
       <div><h1>Financeiro</h1><div class="sub">Busca em todos os dias do caixa</div></div>
     </div>
-    ${campoBusca('buscaFin', buscaFin, 'Buscar no caixa: nome da cliente ou procedimento')}
+    ${campoBusca('buscaFin', buscaFin, 'Buscar: nome da cliente, procedimento ou despesa')}
     <div class="card res-card">
-      <div class="res-head"><b>${achados.length} ${achados.length === 1 ? 'lançamento encontrado' : 'lançamentos encontrados'}</b>${achados.length ? `<span class="sub">Total: <b>${fmtBRL(soma)}</b></span>` : ''}</div>
-      ${achados.map(({ dia: d, l }) => `<button class="res" data-a="irCaixa" data-d="${d}" title="Abrir o caixa deste dia">
+      <div class="res-head"><b>${achados.length} ${achados.length === 1 ? 'lançamento encontrado' : 'lançamentos encontrados'}</b>${achados.length ? `<span class="sub">Saldo: <b>${fmtBRL(soma)}</b></span>` : ''}</div>
+      ${achados.map(({ dia: d, l, v }) => `<button class="res" data-a="irCaixa" data-d="${d}" title="Abrir o caixa deste dia">
         <span class="res-d"><b>${esc(fmtDiaCurto(d))}</b><span>${d === TODAY ? 'Hoje' : esc(fmtDate(d, { weekday: 'short' }))}</span></span>
         <span class="res-n"><b>${esc(l.cliente || '—')}</b><span class="tag">${esc(l.procedimento || 'Sem procedimento')}</span></span>
-        <b class="res-v">${fmtBRL(totalLinha(l))}</b>${I.right}</button>`).join('')}
+        <b class="res-v ${v < 0 ? 'out' : 'in'}">${v < 0 ? '− ' : '+ '}${fmtBRL(Math.abs(v))}</b>${I.right}</button>`).join('')}
       ${achados.length ? '' : `<div class="empty-day">Nenhum lançamento encontrado para “${esc(q.trim())}”.</div>`}
     </div>`;
   ligarBusca('buscaFin', v => { buscaFin = v; });
@@ -1920,6 +2051,7 @@ function tabFin(pid) {
 
 function pdfCaixa(imprimir) {
   if (!window.jspdf) return toast('O gerador de PDF não carregou. Recarregue a página.', 'erro');
+  cx = caixaDoDia(caixaDia); cxSujo = false;
   const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }), W = 210, M = 15;
   const linhas = cx.linhas.filter(linhaUsada), n = Math.max(MIN_LINHAS, linhas.length), t = totaisCaixa(cx);
   let y = 20;
@@ -1967,6 +2099,20 @@ function pdfCaixa(imprimir) {
     doc.setFont('helvetica', k === 3 ? 'bold' : 'normal'); doc.setFontSize(10.5); doc.setTextColor(20); doc.text(fmtBRL(v), bx + bw / 2, y + 12, { align: 'center' });
   });
   y += 24;
+  const desp = cx.despesas || [];
+  if (desp.length) {
+    if (y > 230) { doc.addPage(); y = 20; }
+    const sd = desp.reduce((s, x) => s + (+x.valor || 0), 0);
+    doc.setTextColor(20); doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.text('DESPESAS DO DIA', M, y); y += 6;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    desp.forEach(x => {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.text(doc.splitTextToSize([x.descricao, x.categoria].filter(Boolean).join(' · '), 140)[0], M + 2, y);
+      doc.text('- ' + fmtBRL(x.valor), W - M, y, { align: 'right' }); y += 5.5;
+    });
+    doc.setFont('helvetica', 'bold'); doc.text('Total de despesas', M + 2, y); doc.text('- ' + fmtBRL(sd), W - M, y, { align: 'right' }); y += 6;
+    doc.setFontSize(10.5); doc.text('SALDO DO DIA', M + 2, y); doc.text(fmtBRL(t.total - sd), W - M, y, { align: 'right' }); y += 10;
+  }
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(30);
   doc.text('Observações:', M, y);
   doc.splitTextToSize(cx.observacoes || '', W - 2 * M - 24).slice(0, 2).forEach((s, k) => doc.text(s, M + 23, y - 0.5 + k * 8));
