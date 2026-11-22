@@ -458,56 +458,99 @@ function statusSalvar() {
     : ultimoSalvo ? `Salvo às ${ultimoSalvo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
     : estado === 'pronto' ? 'Tudo salvo no banco de dados' : '';
 }
-// ---------- Dados guardados neste computador (IndexedDB do navegador) ----------
-// Nada sai do computador: o site no GitHub só entrega as telas.
-const BANCO = 'prontuario-dra-elaine';
-let idb = null;
-let perfil = null;
+// ---------- Banco de dados na nuvem (Cloudflare: Worker + D1) ----------
+// Os dados ficam na Cloudflare e aparecem iguais em qualquer computador ou celular.
+// Endereço da API publicada (pasta cloudflare/), ex.: https://prontuario-api.SEU-USUARIO.workers.dev
+const API_URL = 'https://polished-term-a396.naveia-contas.workers.dev';
+const BANCO = 'prontuario-dra-elaine'; // banco antigo, guardado só no navegador (usado para enviar à nuvem)
+let perfil = null, token = null, seqAtual = 0, ultimaCarga = 0, tPoll = null, buscando = false;
 const ehAdmin = () => !!perfil && perfil.papel === 'admin';
-function abrirBanco() {
-  return new Promise((res, rej) => {
-    const r = indexedDB.open(BANCO, 1);
-    r.onupgradeneeded = () => { r.result.createObjectStore('docs'); r.result.createObjectStore('fotos'); };
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => rej(r.error);
-  });
-}
-function noBanco(loja, modo, fn) {
-  return new Promise((res, rej) => {
-    const t = idb.transaction(loja, modo), req = fn(t.objectStore(loja));
-    t.oncomplete = () => res(req && req.result);
-    t.onerror = t.onabort = () => rej(t.error || new Error('falha no banco do navegador'));
-  });
-}
 const chave = (col, id) => `${col}/${id}`;
-const avisando = r => { avisarAbas(); return r; };
-function gravar(col, obj) { const { id, ...dados } = obj; return acompanhar(noBanco('docs', 'readwrite', s => s.put({ colecao: col, id: String(id), dados: clone(dados) }, chave(col, id))).then(avisando)); }
-function apagar(col, id) { return acompanhar(noBanco('docs', 'readwrite', s => s.delete(chave(col, id))).then(avisando)); }
+const estavel = v => JSON.stringify(v, (k, x) => x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, c) => (o[c] = x[c], o), {}) : x);
+const linha = (col, obj) => { const { id, ...dados } = obj; return { colecao: col, id: String(id), dados: clone(dados) }; };
+
+// Conversa com a API. Erros viram { code } para as mensagens da tela.
+async function api(metodo, caminho, corpo, comoArquivo) {
+  const h = {}; if (token) h.Authorization = 'Bearer ' + token;
+  let body;
+  if (corpo instanceof Blob) { body = corpo; h['Content-Type'] = corpo.type || 'image/jpeg'; }
+  else if (corpo !== undefined) { body = JSON.stringify(corpo); h['Content-Type'] = 'application/json'; }
+  let r;
+  try { r = await fetch(API_URL + caminho, { method: metodo, headers: h, body, cache: 'no-store' }); }
+  catch { throw { code: 'rede' }; }
+  if (r.status === 401 && token && perfil) { sessaoCaiu(); throw { code: 'sem_sessao' }; }
+  if (!r.ok) { let d = {}; try { d = await r.json(); } catch {} throw { code: d.erro || 'http_' + r.status, status: r.status }; }
+  return comoArquivo ? r.blob() : r.json();
+}
+
+// Gravações do mesmo item saem uma de cada vez, na ordem em que foram feitas
+const pendentes = {}, filas = {};
+function enviar(col, id, fn) {
+  const k = chave(col, id);
+  pendentes[k] = (pendentes[k] || 0) + 1;
+  const p = (filas[k] || Promise.resolve()).catch(() => {}).then(fn);
+  filas[k] = p;
+  const fim = () => { if (--pendentes[k] <= 0) { delete pendentes[k]; delete filas[k]; } };
+  p.then(fim, fim);
+  return acompanhar(p);
+}
+function gravar(col, obj) { const l = linha(col, obj); return enviar(col, l.id, () => api('POST', '/api/gravar', { itens: [l] })); }
+function apagar(col, id) { return enviar(col, String(id), () => api('POST', '/api/apagar', { colecao: col, id: String(id) })); }
 function gravarConfig() { return gravar('config', Object.assign({ id: 'geral' }, S.settings)); }
 
+// Coloca um item vindo do banco na memória; devolve true se algo mudou
 function aplicar(row) {
-  if (!row || !row.colecao) return;
-  if (row.colecao === 'config') { if (row.id === 'geral') S.settings = mesclarSettings(row.dados); return; }
-  const arr = S[row.colecao]; if (!Array.isArray(arr)) return;
+  if (!row || !row.colecao) return false;
+  if (row.colecao === 'config') {
+    if (row.id !== 'geral') return false;
+    const n = mesclarSettings(row.dados); if (estavel(n) === estavel(S.settings)) return false;
+    S.settings = n; return true;
+  }
+  const arr = S[row.colecao]; if (!Array.isArray(arr) || row.colecao === 'usuarios') return false;
   const obj = Object.assign(clone(row.dados || {}), { id: row.id }), i = arr.findIndex(x => x.id === row.id);
-  if (i >= 0) arr[i] = obj; else arr.push(obj);
+  if (i < 0) { arr.push(obj); return true; }
+  if (estavel(arr[i]) === estavel(obj)) return false;
+  Object.keys(arr[i]).forEach(k => delete arr[i][k]); Object.assign(arr[i], obj); return true;
+}
+function remover(col, id) {
+  const arr = S[col]; if (!Array.isArray(arr)) return false;
+  const n = arr.length; S[col] = arr.filter(x => x.id !== id); return S[col].length !== n;
 }
 
-async function iniciar() {
+async function baixarTudo() {
+  const d = await api('GET', '/api/dados');
+  COLS.forEach(c => { S[c] = []; }); S.settings = defaultSettings();
+  d.linhas.forEach(aplicar);
+  S.usuarios = d.equipe;
+  seqAtual = d.seq; ultimaCarga = Date.now();
+}
+
+// A cada 15 segundos (e ao voltar para a aba) busca o que mudou em outros aparelhos
+async function buscarMudancas() {
+  if (estado !== 'pronto' || buscando) return;
+  buscando = true;
   try {
-    idb = await abrirBanco();
-    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch {}
-    COLS.forEach(c => { S[c] = []; });
-    (await noBanco('docs', 'readonly', s => s.getAll())).forEach(aplicar);
-    if (!S.modelos.length) {
-      [['clinico', 'Atendimento clínico geral', ['Queixa principal','Sintomas relatados','Exame físico','Medicação prescrita','Exames solicitados','Diagnóstico']],
-       ['retorno', 'Retorno', ['Evolução','Resultado de exames','Conduta']],
-       ['livre', 'Evolução livre', ['Evolução']]].forEach(([id, nome, campos]) => { const m = { id, nome, campos }; S.modelos.push(m); gravar('modelos', m); });
-    }
-  } catch (e) { console.error(e); estado = 'semnavegador'; return render(); }
+    const d = await api('GET', '/api/mudancas?desde=' + seqAtual);
+    let mudou = false;
+    d.linhas.forEach(r => { if (pendentes[chave(r.colecao, r.id)]) return; if (r.apagado ? remover(r.colecao, r.id) : aplicar(r)) mudou = true; });
+    seqAtual = d.seq; ultimaCarga = Date.now();
+    const eu = d.equipe.find(u => u.id === perfil.id);
+    const equipeMudou = estavel(d.equipe) !== estavel(S.usuarios); S.usuarios = d.equipe;
+    if (eu && eu.papel !== perfil.papel) { perfil = eu; await baixarTudo(); if (!ehAdmin() && !['agenda', 'pacientes', 'financeiro'].includes(view)) view = 'agenda'; render(); }
+    else if (mudou) aoMudar();
+    else if (equipeMudou && view === 'equipe') render();
+    if (eu) perfil = eu;
+  } catch (e) { if (e.code !== 'sem_sessao') console.error(e); }
+  finally { buscando = false; }
+}
+function iniciarBusca() { clearInterval(tPoll); tPoll = setInterval(() => { if (!document.hidden) buscarMudancas(); }, 15000); }
+
+async function iniciar() {
+  if (!API_URL) { estado = 'semconfig'; return render(); }
+  token = lerToken();
   assets = {
-    upload: async blob => { const id = uid() + uid(); await noBanco('fotos', 'readwrite', s => s.put(blob, id)); return { id }; },
-    delete: async id => { await noBanco('fotos', 'readwrite', s => s.delete(id)); if (urlsFoto[id]) URL.revokeObjectURL(urlsFoto[id]); delete urlsFoto[id]; },
+    upload: async blob => { const id = uid() + uid(); await api('PUT', '/api/fotos/' + id, blob); return { id }; },
+    delete: async id => { await api('DELETE', '/api/fotos/' + id); if (urlsFoto[id]) URL.revokeObjectURL(urlsFoto[id]); delete urlsFoto[id]; },
   };
   downloads = {
     save: async ({ filename, data }) => {
@@ -518,29 +561,21 @@ async function iniciar() {
       return { status: 'saved' };
     },
   };
-  // Outra aba aberta no mesmo computador também salvou: recarrega os dados
-  try { canalAbas = new BroadcastChannel(BANCO); canalAbas.onmessage = () => recarregar(); } catch {}
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) buscarMudancas(); });
   decidirAcesso();
 }
-let canalAbas = null, tAviso = null;
-async function recarregar() {
-  const linhas = await noBanco('docs', 'readonly', s => s.getAll());
-  COLS.forEach(c => { S[c] = []; }); linhas.forEach(aplicar); aoMudar();
-}
-// Avisa as outras abas um pouco depois da última gravação
-const avisarAbas = () => { clearTimeout(tAviso); tAviso = setTimeout(() => { try { canalAbas && canalAbas.postMessage(1); } catch {} }, 400); };
 
-// Fotos: guardadas como arquivo no navegador e exibidas por um endereço local
+// Fotos: guardadas na nuvem e exibidas por um endereço local
 const urlsFoto = {}, pedidas = new Set();
 function fotoSrc(id) {
   if (id in urlsFoto) return urlsFoto[id];
-  if (!pedidas.has(id)) {
+  if (!pedidas.has(id) && token) {
     pedidas.add(id);
-    noBanco('fotos', 'readonly', s => s.get(id)).then(b => {
+    api('GET', '/api/fotos/' + id, undefined, true).then(b => {
       urlsFoto[id] = b ? URL.createObjectURL(b) : '';
       if (drawerPac && drawerTab === 'fotos') abrirProntuario(drawerPac, drawerConsulta, 'fotos');
       if (lightbox && lightbox.lista[lightbox.i].asset === id) verFoto(lightbox.lista[lightbox.i].id);
-    });
+    }, e => { console.error(e); setTimeout(() => pedidas.delete(id), 10000); });
   }
   return '';
 }
@@ -551,7 +586,7 @@ async function exportarCopia() {
   salvarCaixa(); await Promise.allSettled([...emAndamento]);
   toast('Preparando a cópia…');
   const fotos = {};
-  for (const f of S.fotos) { const b = await noBanco('fotos', 'readonly', s => s.get(f.asset)); if (b) fotos[f.asset] = await blobParaTexto(b); }
+  for (const f of S.fotos) { try { fotos[f.asset] = await blobParaTexto(await api('GET', '/api/fotos/' + f.asset, undefined, true)); } catch (e) { console.error(e); } }
   const { pacientes, consultas, registros, modelos, prescricoes, caixa, usuarios, settings } = S;
   await salvarArquivo(`prontuario-copia-${TODAY}.json`, JSON.stringify({ settings, pacientes, consultas, registros, modelos, prescricoes, fotos: S.fotos, caixa, usuarios, arquivosFotos: fotos }), 'Cópia salva. Guarde o arquivo num pendrive ou no Google Drive.');
   try { localStorage.setItem('prontuario.ultimaCopia', TODAY); } catch {}
@@ -559,72 +594,111 @@ async function exportarCopia() {
 }
 const ultimaCopia = () => { try { return localStorage.getItem('prontuario.ultimaCopia'); } catch { return null; } };
 
-// ---------- Login (contas guardadas neste computador, senhas embaralhadas) ----------
-const SESSAO = 'prontuario.sessao', INATIVO_MIN = 30;
-const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
-async function hashSenha(senha, saltB64) {
-  const salt = saltB64 ? Uint8Array.from(atob(saltB64), c => c.charCodeAt(0)) : crypto.getRandomValues(new Uint8Array(16));
-  const chaveBase = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 150000, hash: 'SHA-256' }, chaveBase, 256);
-  return { salt: b64(salt), hash: b64(bits) };
+// ---------- Login ----------
+// "Manter conectada": o acesso fica guardado no aparelho por 30 dias (o servidor confere a validade).
+// Sem essa opção: some ao fechar o navegador, vale no máximo 12 horas e sai após 30 min parado.
+const lerLocal = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const TOKEN = 'prontuario.token', ULTIMO_EMAIL = 'prontuario.ultimoEmail', LEMBRAR = 'prontuario.lembrar', LEMBRAR_DIAS = 30, INATIVO_MIN = 30;
+const lerToken = () => { try { return sessionStorage.getItem(TOKEN) || localStorage.getItem(TOKEN); } catch { return null; } };
+function guardarToken(t, lembrar) {
+  token = t;
+  try { localStorage.removeItem(TOKEN); sessionStorage.removeItem(TOKEN); if (t) (lembrar ? localStorage : sessionStorage).setItem(TOKEN, t); } catch {}
 }
-async function senhaConfere(u, senha) { return (await hashSenha(senha, u.salt)).hash === u.hash; }
 const acharUsuario = email => S.usuarios.find(u => u.email === String(email || '').trim().toLowerCase());
+let sessaoLembrada = false;
 
-function decidirAcesso() {
-  if (!S.usuarios.length) { estado = 'primeiro'; return render(); }
-  let id = null; try { id = sessionStorage.getItem(SESSAO); } catch {}
-  const u = S.usuarios.find(x => x.id === id && x.ativo);
-  if (u) return abrirSessao(u);
-  estado = 'login'; render();
+async function decidirAcesso() {
+  estado = 'carregando'; render();
+  try {
+    if (token) {
+      try { const d = await api('GET', '/api/eu'); return await entrar(d.perfil); }
+      catch (e) { if (e.code !== 'sem_sessao' && e.status !== 401) throw e; guardarToken(null); }
+    }
+    estado = (await api('GET', '/api/estado')).haAdmin ? 'login' : 'primeiro';
+    render();
+  } catch (e) { console.error(e); estado = 'lento'; render(); setTimeout(decidirAcesso, 5000); }
 }
-function abrirSessao(u) {
-  perfil = u; try { sessionStorage.setItem(SESSAO, u.id); } catch {}
+async function entrar(p) {
+  perfil = p;
+  sessaoLembrada = !!lerLocal(TOKEN);
+  try { localStorage.setItem(ULTIMO_EMAIL, perfil.email); } catch {}
+  estado = 'carregando'; render();
+  await baixarTudo();
+  if (ehAdmin() && !S.modelos.length) {
+    [['clinico', 'Atendimento clínico geral', ['Queixa principal','Sintomas relatados','Exame físico','Medicação prescrita','Exames solicitados','Diagnóstico']],
+     ['retorno', 'Retorno', ['Evolução','Resultado de exames','Conduta']],
+     ['livre', 'Evolução livre', ['Evolução']]].forEach(([id, nome, campos]) => { const m = { id, nome, campos }; S.modelos.push(m); gravar('modelos', m); });
+  }
+  iniciarBusca();
   if (!ehAdmin() && !['agenda', 'pacientes', 'financeiro'].includes(view)) view = 'agenda';
   estado = 'pronto'; marcarAtividade(); render();
+  if (ehAdmin()) lerBancoAntigo().then(d => { dadosAparelho = d; if (legado() && view === 'agenda') render(); }).catch(e => console.error(e));
 }
-function sair(msg) {
-  salvarCaixa(); perfil = null; fecharDrawer(); closeModal();
-  try { sessionStorage.removeItem(SESSAO); } catch {}
-  estado = 'login'; render(); if (msg) toast(msg);
+function limparSessao(msg) {
+  clearInterval(tPoll); guardarToken(null);
+  perfil = null; sessaoLembrada = false; fecharDrawer(); closeModal();
+  COLS.forEach(c => { S[c] = []; }); S.settings = defaultSettings(); dadosAparelho = null; seqAtual = 0;
+  estado = 'login'; render(); if (msg) toast(msg, 'erro');
 }
-// Computador parado por 30 minutos: volta para a tela de login
+const sessaoCaiu = () => limparSessao('Seu acesso terminou ou foi bloqueado. Entre de novo.');
+async function sair(msg) {
+  if (estado === 'pronto') { salvarCaixa(); await Promise.allSettled([...emAndamento]); }
+  try { if (token) await api('POST', '/api/sair'); } catch {}
+  limparSessao(); if (msg) toast(msg);
+}
+// Aparelho parado por 30 minutos: volta para a tela de login (só quando não marcou "Manter conectada")
 let ultimaAtividade = Date.now();
 const marcarAtividade = () => { ultimaAtividade = Date.now(); };
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, marcarAtividade, { passive: true }));
-setInterval(() => { if (perfil && Date.now() - ultimaAtividade > INATIVO_MIN * 60000) sair('Por segurança, entre de novo.'); }, 60000);
+setInterval(() => { if (perfil && !sessaoLembrada && Date.now() - ultimaAtividade > INATIVO_MIN * 60000) sair('Por segurança, entre de novo.'); }, 60000);
+
+const msgLogin = e => ({
+  senha_incorreta: 'E-mail ou senha incorretos.',
+  bloqueado: 'Este acesso está bloqueado. Fale com a administradora.',
+  muitas_tentativas: 'Muitas tentativas erradas. Espere 15 minutos e tente de novo.',
+  email_invalido: 'Informe um e-mail válido.',
+  senha_curta: 'A senha precisa ter pelo menos 8 caracteres.',
+  ja_existe_admin: 'Já existe uma administradora. Use a tela de entrar.',
+}[e && e.code] || 'Não foi possível entrar. Confira a internet e tente de novo.');
 
 function renderAcesso() {
   const logo = `<img src="${$('.brand-logo').src}" alt="" class="login-logo">`;
+  const caixaLembrar = `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+          <input type="checkbox" id="acLembrar" ${lerLocal(LEMBRAR) === '0' ? '' : 'checked'}> Manter conectada neste aparelho por ${LEMBRAR_DIAS} dias</label>`;
   $('#view').innerHTML = estado === 'primeiro' ? `<div class="card login">${logo}<h1>Primeiro acesso</h1>
       <div class="sub" style="margin-bottom:16px">Crie a conta de administrador. Ela cadastra as outras pessoas em Equipe.</div>
       <form id="fAcesso" class="grid">
         <div><label class="f" for="acNome">Nome</label><input class="input" id="acNome" autocomplete="name" required></div>
         <div><label class="f" for="acEmail">E-mail</label><input class="input" id="acEmail" type="email" autocomplete="email" required></div>
         <div><label class="f" for="acSenha">Senha (mínimo 8 caracteres)</label><input class="input" id="acSenha" type="password" autocomplete="new-password" minlength="8" required></div>
+        ${caixaLembrar}
         <button class="btn primary" type="submit">Criar e entrar</button>
       </form><div class="sub" style="margin-top:14px">Anote a senha: ela não pode ser recuperada por e-mail.</div></div>`
     : `<div class="card login">${logo}<h1>Entrar</h1>
       <form id="fAcesso" class="grid">
         <div><label class="f" for="acEmail">E-mail</label><input class="input" id="acEmail" type="email" autocomplete="email" required></div>
         <div><label class="f" for="acSenha">Senha</label><input class="input" id="acSenha" type="password" autocomplete="current-password" required></div>
+        ${caixaLembrar}
         <button class="btn primary" type="submit">Entrar</button>
       </form>
       <div class="login-links"><button class="lnk" id="acEsq">Esqueci minha senha</button></div></div>`;
   if ($('#acEsq')) $('#acEsq').onclick = () => toast('Peça para a administradora criar uma senha nova em Equipe.');
   const form = $('#fAcesso'), btn = form.querySelector('button[type=submit]');
+  if (estado === 'login' && lerLocal(ULTIMO_EMAIL)) { $('#acEmail').value = lerLocal(ULTIMO_EMAIL); setTimeout(() => $('#acSenha')?.focus(), 30); }
   form.onsubmit = async ev => {
     ev.preventDefault(); btn.disabled = true;
+    const lembrar = $('#acLembrar').checked, email = $('#acEmail').value.trim().toLowerCase(), senha = $('#acSenha').value;
+    try { localStorage.setItem(LEMBRAR, lembrar ? '1' : '0'); } catch {}
     try {
-      if (estado === 'primeiro') {
-        const u = Object.assign({ id: uid(), nome: $('#acNome').value.trim(), email: $('#acEmail').value.trim().toLowerCase(), papel: 'admin', ativo: true, criadoEm: new Date().toISOString() }, await hashSenha($('#acSenha').value));
-        S.usuarios.push(u); await gravar('usuarios', u); return abrirSessao(u);
-      }
-      const u = acharUsuario($('#acEmail').value);
-      if (!u || !(await senhaConfere(u, $('#acSenha').value))) { toast('E-mail ou senha incorretos.', 'erro'); btn.disabled = false; return; }
-      if (!u.ativo) { toast('Este acesso está bloqueado. Fale com a administradora.', 'erro'); btn.disabled = false; return; }
-      abrirSessao(u);
-    } catch (e) { console.error(e); toast('Não foi possível entrar. Recarregue a página e tente de novo.', 'erro'); btn.disabled = false; }
+      const d = estado === 'primeiro'
+        ? await api('POST', '/api/primeiro-acesso', { nome: $('#acNome').value.trim(), email, senha, lembrar })
+        : await api('POST', '/api/entrar', { email, senha, lembrar });
+      guardarToken(d.token, lembrar);
+      await entrar(d.perfil);
+    } catch (e) {
+      console.error(e); toast(msgLogin(e), 'erro');
+      if (estado === 'carregando') { guardarToken(null); estado = 'login'; render(); } else btn.disabled = false;
+    }
   };
 }
 
@@ -654,7 +728,7 @@ function modalUsuario(id) {
   openModal(`${modalHead(u ? 'Editar acesso' : 'Nova pessoa')}
     <div class="card-body grid">
       <div><label class="f" for="usNome">Nome</label><input class="input" id="usNome" value="${esc(u ? u.nome : '')}"></div>
-      <div><label class="f" for="usEmail">E-mail (usado para entrar)</label><input class="input" id="usEmail" type="email" value="${esc(u ? u.email : '')}"></div>
+      <div><label class="f" for="usEmail">E-mail (usado para entrar)</label><input class="input" id="usEmail" type="email" value="${esc(u ? u.email : '')}" ${u ? 'disabled title="Para trocar o e-mail, exclua e cadastre de novo"' : ''}></div>
       <div><label class="f" for="usSenha">${u ? 'Nova senha (deixe vazio para manter)' : 'Senha (mínimo 8 caracteres)'}</label><input class="input" id="usSenha" type="password" autocomplete="new-password"></div>
       ${eu ? '' : `<div class="grid g2">
         <div><label class="f" for="usPapel">Função</label><select class="input" id="usPapel"><option value="funcionaria" ${!u || u.papel === 'funcionaria' ? 'selected' : ''}>Funcionária</option><option value="admin" ${u && u.papel === 'admin' ? 'selected' : ''}>Administradora</option></select></div>
@@ -666,19 +740,30 @@ function modalUsuario(id) {
       <button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" id="usOk">Salvar</button>
     </div>`);
   $('#usOk').onclick = async () => {
-    const nome = $('#usNome').value.trim(), email = $('#usEmail').value.trim().toLowerCase(), senha = $('#usSenha').value;
+    const btn = $('#usOk'), nome = $('#usNome').value.trim(), email = $('#usEmail').value.trim().toLowerCase(), senha = $('#usSenha').value;
     if (!nome) return $('#usNome').focus();
-    if (!/^\S+@\S+\.\S+$/.test(email)) { toast('Informe um e-mail válido', 'erro'); return $('#usEmail').focus(); }
-    const outro = acharUsuario(email); if (outro && outro.id !== id) { toast('Já existe alguém com este e-mail', 'erro'); return; }
+    if (!u) {
+      if (!/^\S+@\S+\.\S+$/.test(email)) { toast('Informe um e-mail válido', 'erro'); return $('#usEmail').focus(); }
+      if (acharUsuario(email)) { toast('Já existe alguém com este e-mail', 'erro'); return; }
+    }
     if ((!u || senha) && senha.length < 8) { toast('A senha precisa ter pelo menos 8 caracteres', 'erro'); return $('#usSenha').focus(); }
-    const novo = u || { id: uid(), criadoEm: new Date().toISOString() };
-    Object.assign(novo, { nome, email });
-    if (!eu) Object.assign(novo, { papel: $('#usPapel').value, ativo: $('#usAtivo').value === '1' });
-    if (senha) Object.assign(novo, await hashSenha(senha));
-    if (!u) S.usuarios.push(novo);
-    gravar('usuarios', novo); closeModal(); render(); toast(u ? 'Acesso atualizado' : 'Pessoa cadastrada');
+    const dados = { nome };
+    if (!eu) Object.assign(dados, { papel: $('#usPapel').value, ativo: $('#usAtivo').value === '1' });
+    if (senha) dados.senha = senha;
+    btn.disabled = true;
+    try {
+      if (!u) { const d = await api('POST', '/api/equipe', Object.assign(dados, { email })); S.usuarios.push(d.perfil); }
+      else { const d = await api('PATCH', '/api/equipe/' + u.id, dados); Object.assign(u, d.perfil); if (eu) perfil.nome = d.perfil.nome; }
+      closeModal(); render(); toast(u ? 'Acesso atualizado' : 'Pessoa cadastrada');
+    } catch (e) {
+      console.error(e); btn.disabled = false;
+      toast(e && e.code === 'email_existe' ? 'Já existe uma conta com este e-mail.' : 'Não foi possível salvar. Confira a internet e tente de novo.', 'erro');
+    }
   };
-  if (u && !eu) $('#usDel').onclick = () => confirmar(`Excluir o acesso de ${u.nome}?`, () => { S.usuarios = S.usuarios.filter(x => x.id !== u.id); apagar('usuarios', u.id); render(); toast('Acesso excluído'); }, 'Excluir acesso');
+  if (u && !eu) $('#usDel').onclick = () => confirmar(`Excluir o acesso de ${u.nome}?`, async () => {
+    try { await api('DELETE', '/api/equipe/' + u.id); S.usuarios = S.usuarios.filter(x => x.id !== u.id); render(); toast('Acesso excluído'); }
+    catch (e) { console.error(e); toast('Não foi possível excluir. Confira a internet e tente de novo.', 'erro'); }
+  }, 'Excluir acesso');
 }
 
 // Atualizações vindas do banco (inclusive de outro aparelho)
@@ -709,7 +794,7 @@ $('#btnSalvar').onclick = async () => {
   if (erroSalvar) { erroSalvar = false; gravarConfig(); }
   await Promise.allSettled([...emAndamento]);
   statusSalvar();
-  if (!erroSalvar) toast(`Tudo salvo neste computador · ${S.pacientes.length} pacientes, ${S.registros.length} registros, ${S.prescricoes.length} prescrições`);
+  if (!erroSalvar) toast(`Tudo salvo na nuvem · ${S.pacientes.length} pacientes, ${S.registros.length} registros, ${S.prescricoes.length} prescrições`);
 };
 
 const SO_ADMIN = ['modelos', 'config', 'equipe'];
@@ -736,38 +821,70 @@ function renderEstado() {
   const m = {
     carregando: ['Carregando prontuário…', 'Buscando pacientes, agenda e registros no banco de dados.'],
     lento: ['Sem conexão com o banco de dados', 'A página continua tentando. Confira a internet; os dados aparecem assim que a conexão voltar.'],
+    semconfig: ['Falta ligar o banco de dados', 'Preencha API_URL no index.html (veja o COMO-COLOCAR-NO-AR.md).'],
     semnavegador: ['Navegador sem armazenamento', 'Este navegador não deixa o site guardar dados (janela anônima ou bloqueio). Abra o site numa janela normal do Chrome ou do Edge.'],
   }[estado];
   $('#view').innerHTML = `<div class="card estado"><h1>${m[0]}</h1><div class="sub">${m[1]}</div></div>`;
 }
 
-// ---------- Dados antigos (só no navegador) ----------
-function legado() {
-  try {
-    if (localStorage.getItem('prontuario.migrado')) return null;
-    const d = JSON.parse(localStorage.getItem(LEGADO));
-    return d && ((d.pacientes || []).length || (d.registros || []).length || (d.consultas || []).length) ? d : null;
-  } catch { return null; }
+// ---------- Dados antigos, guardados só neste aparelho (versão sem nuvem) ----------
+const MIGRADO_NUVEM = 'prontuario.enviadoNuvem';
+let dadosAparelho = null;
+async function lerBancoAntigo() {
+  if (!window.indexedDB || lerLocal(MIGRADO_NUVEM)) return null;
+  if (indexedDB.databases) { try { if (!(await indexedDB.databases()).some(d => d.name === BANCO)) return null; } catch {} }
+  const idb = await new Promise((res, rej) => {
+    const r = indexedDB.open(BANCO);
+    r.onupgradeneeded = () => { r.result.createObjectStore('docs'); r.result.createObjectStore('fotos'); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  const ler = loja => new Promise((res, rej) => {
+    if (!idb.objectStoreNames.contains(loja)) return res([]);
+    const out = [], c = idb.transaction(loja, 'readonly').objectStore(loja).openCursor();
+    c.onsuccess = () => { const k = c.result; if (!k) return res(out); out.push([k.key, k.value]); k.continue(); };
+    c.onerror = () => rej(c.error);
+  });
+  const docs = await ler('docs'), fotos = await ler('fotos'); idb.close();
+  const d = { arquivosFotos: {} }; COLS.forEach(c => { d[c] = []; });
+  docs.forEach(([, r]) => {
+    if (!r || !r.colecao) return;
+    if (r.colecao === 'config') { if (r.id === 'geral') d.settings = r.dados; }
+    else if (d[r.colecao]) d[r.colecao].push(Object.assign({}, r.dados, { id: r.id }));
+  });
+  fotos.forEach(([k, b]) => { d.arquivosFotos[k] = b; });
+  return d;
 }
-// Restaura uma cópia de segurança (ou os dados trazidos do prontuário do Claude)
+function legado() {
+  if (lerLocal(MIGRADO_NUVEM)) return null;
+  const temAlgo = d => d && ((d.pacientes || []).length || (d.registros || []).length || (d.consultas || []).length);
+  if (temAlgo(dadosAparelho)) return dadosAparelho;
+  try { if (!localStorage.getItem('prontuario.migrado')) { const d = JSON.parse(localStorage.getItem(LEGADO)); if (temAlgo(d)) return d; } } catch {}
+  return null;
+}
+// Restaura uma cópia de segurança (ou os dados que estavam só neste aparelho) para a nuvem
 async function importar(d, comConfig) {
   const itens = ['pacientes','consultas','registros','prescricoes','caixa'].flatMap(c => (Array.isArray(d[c]) ? d[c] : []).filter(x => x && x.id).map(x => [c, x]));
-  const nomes = new Set(S.modelos.map(m => String(m.nome).toLowerCase()));
-  (d.modelos || []).forEach(m => { if (m && m.id && !nomes.has(String(m.nome).toLowerCase())) { nomes.add(String(m.nome).toLowerCase()); itens.push(['modelos', m]); } });
+  (d.modelos || []).forEach(m => {
+    if (!m || !m.id) return;
+    const outro = S.modelos.find(x => String(x.nome).toLowerCase() === String(m.nome).toLowerCase());
+    if (!outro || outro.id === m.id) itens.push(['modelos', m]);
+  });
   // Fotos só entram junto com o arquivo da imagem
   const arquivos = d.arquivosFotos || {};
-  (d.fotos || []).forEach(f => { if (f && f.id && arquivos[f.asset]) itens.push(['fotos', f]); });
-  // Contas da cópia entram sem substituir quem já existe neste computador
-  (d.usuarios || []).forEach(u => { if (u && u.id && !acharUsuario(u.email)) itens.push(['usuarios', u]); });
+  const fotos = (d.fotos || []).filter(f => f && f.id && arquivos[f.asset]);
+  fotos.forEach(f => itens.push(['fotos', f]));
   try {
-    for (const [c, x] of itens) {
-      if (c === 'fotos') { const b = await (await fetch(arquivos[x.asset])).blob(); await noBanco('fotos', 'readwrite', s => s.put(b, x.asset)); }
-      await gravar(c, x);
-      aplicar({ colecao: c, id: String(x.id), dados: (({ id, ...r }) => r)(x) });
+    toast('Enviando para a nuvem…');
+    for (const f of fotos) {
+      const a = arquivos[f.asset], b = a instanceof Blob ? a : await (await fetch(a)).blob();
+      await api('PUT', '/api/fotos/' + f.asset, b);
     }
+    const linhas = itens.map(([c, x]) => linha(c, x));
+    for (let i = 0; i < linhas.length; i += 100) await api('POST', '/api/gravar', { itens: linhas.slice(i, i + 100) });
+    linhas.forEach(aplicar);
     if (comConfig && d.settings) { S.settings = mesclarSettings(d.settings); await gravarConfig(); }
   } catch (e) { falha(e); return false; }
-  toast(`${itens.length} itens restaurados`);
+  toast(`${itens.length} itens enviados para a nuvem`);
   return true;
 }
 
@@ -788,12 +905,12 @@ function renderAgenda() {
   const doDia = S.consultas.filter(c => c.data === dia);
   const atendidos = doDia.filter(c => c.status === 'atendido').length;
   const label = fmtDate(dia, { weekday: 'long', day: 'numeric', month: 'long' });
-  const lg = !legadoOculto && legado();
+  const lg = !legadoOculto && ehAdmin() && legado();
   $('#view').innerHTML = `
     ${lg ? `<div class="banner">
-      <div><b>Há dados salvos só neste navegador</b><div class="sub">${(lg.pacientes || []).length} pacientes e ${(lg.registros || []).length} registros da versão anterior. Envie para o banco de dados para não perder.</div></div>
+      <div><b>Há dados salvos só neste aparelho</b><div class="sub">${(lg.pacientes || []).length} pacientes, ${(lg.consultas || []).length} agendamentos e ${(lg.registros || []).length} registros da versão anterior. Envie para a nuvem para aparecerem em todos os aparelhos. Nada é apagado deste aparelho.</div></div>
       <button class="btn" data-a="legadoNao">Agora não</button>
-      <button class="btn primary" data-a="legado">Enviar para o banco</button>
+      <button class="btn primary" data-a="legado">Enviar para a nuvem</button>
     </div>` : ''}
     <div class="page-head">
       <div><h1>Agenda</h1><div class="sub">${dia === TODAY ? 'Hoje · ' : ''}${esc(label)}</div></div>
@@ -878,7 +995,7 @@ $('#view').addEventListener('click', e => {
   else if (a === 'status') { const c = S.consultas.find(c => c.id === id); c.status = c.status === 'atendido' ? 'agendado' : 'atendido'; gravar('consultas', c); }
   else if (a === 'cancelar') return confirmar('Cancelar este agendamento?', () => { S.consultas = S.consultas.filter(c => c.id !== id); apagar('consultas', id); render(); toast('Agendamento cancelado'); }, 'Cancelar agendamento');
   else if (a === 'legadoNao') { legadoOculto = true; }
-  else if (a === 'legado') { const d = legado(); if (!d) return; el.disabled = true; importar(d, true).then(ok => { if (ok) { try { localStorage.setItem('prontuario.migrado', TODAY); } catch {} } render(); }); return; }
+  else if (a === 'legado') { const d = legado(); if (!d) return; el.disabled = true; importar(d, true).then(ok => { if (ok) { try { localStorage.setItem('prontuario.migrado', TODAY); localStorage.setItem(MIGRADO_NUVEM, TODAY); } catch {} } render(); }); return; }
   else if (a === 'pagar') return pagarConsulta(id);
   else if (a === 'cxHoje') mudarDiaCaixa(TODAY);
   else if (a === 'cxPrev' || a === 'cxNext') mudarDiaCaixa(addDays(caixaDia, a === 'cxNext' ? 1 : -1));
@@ -1672,7 +1789,7 @@ function renderConfig() {
       </div></div>
       <div class="card"><div class="card-body" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
         <div style="flex:1;min-width:240px"><p class="section-title" style="margin-bottom:4px">Cópia de segurança</p>
-          <div class="sub">Os dados ficam guardados só neste computador. Faça uma cópia toda semana e guarde num pendrive ou no Google Drive: se o navegador for limpo ou o computador quebrar, é ela que traz tudo de volta.
+          <div class="sub">Os dados ficam na nuvem e aparecem em qualquer aparelho. Mesmo assim, faça uma cópia de vez em quando e guarde num pendrive ou no Google Drive: é uma garantia extra.
           ${ultimaCopia() ? `<br><b>Última cópia: ${fmtDate(ultimaCopia())}</b>` : '<br><b>Nenhuma cópia feita ainda.</b>'}</div></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn primary" id="cExp">${I.pdf}Fazer cópia agora</button>
@@ -1686,7 +1803,7 @@ function renderConfig() {
     f.text().then(t => {
       try {
         const d = JSON.parse(t); if (!d.pacientes || !d.settings) throw 0;
-        confirmar('Restaurar os dados desta cópia neste computador? Itens iguais são atualizados; nada é apagado.', () => importar(d, true).then(() => { configMostrada = false; render(); }), 'Restaurar cópia');
+        confirmar('Enviar os dados desta cópia para a nuvem? Itens iguais são atualizados; nada é apagado.', () => importar(d, true).then(() => { configMostrada = false; render(); }), 'Restaurar cópia');
       } catch { toast('Arquivo de cópia inválido', 'erro'); }
     });
   };
