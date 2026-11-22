@@ -81,7 +81,8 @@
   .brand-mark svg { width: 13px; height: 13px; }
   .brand { gap: 10px; }
   .avatar.foto { width: 42px; height: 42px; object-fit: cover; padding: 0; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px #c9a75e; }
-  .avatar.iniciais { font-size: 15px; letter-spacing: .5px; }
+  .avatar.iniciais { display: flex; align-items: center; justify-content: center; line-height: 1; font-size: 17px; font-weight: 700; letter-spacing: .5px; text-align: center; }
+  nav[hidden] { display: none !important; }
   .brand-logo { width: 52px; height: 52px; object-fit: contain; display: block; }
   nav { display: flex; gap: 2px; margin: 0 auto; padding: 5px; background: rgba(255,255,255,.7); border: 1px solid rgba(236,231,220,.9); border-radius: 999px; }
   nav button { border: 0; background: none; padding: 9px 16px; border-radius: 999px; cursor: pointer; color: var(--muted); font-weight: 550; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: background .15s, color .15s; }
@@ -343,7 +344,6 @@
     nav button { padding: 9px 11px; }
     header { padding: calc(8px + env(safe-area-inset-top, 0px)) 8px 0; }
     .bar { height: 60px; border-radius: 18px; padding: 0 8px; }
-    .brand-logo { width: 40px; height: 40px; }
     .brand span { display: none; }
     .bar { gap: 16px; padding: 0 16px; }
     main { padding: 20px 16px 48px; }
@@ -357,17 +357,22 @@
     .d-foot { padding: 12px 16px; }
     .slot { padding: 12px 14px; gap: 10px; grid-template-columns: 56px 1fr auto; }
   }
-  @media (max-width: 600px) {
-    .bar { gap: 6px; padding: 0 6px; height: 56px; }
-    .brand-logo { width: 34px; height: 34px; }
-    nav { padding: 3px; gap: 0; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-    nav::-webkit-scrollbar { display: none; }
-    nav button { padding: 8px 9px; flex: none; }
-    nav button svg { width: 18px; height: 18px; }
-    .who { gap: 6px; flex: none; }
-    .avatar.foto { width: 34px; height: 34px; }
-    .avatar.iniciais { font-size: 13px; }
-    .btn.sair { padding: 6px 8px; }
+  /* Celular: em cima fica logo + iniciais + Sair; os botões das páginas vão para um menu flutuante embaixo */
+  @media (max-width: 700px) {
+    .bar { justify-content: space-between; height: 58px; padding: 0 8px 0 10px; gap: 10px; -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255,255,255,.9); }
+    .brand-logo { width: 38px; height: 38px; }
+    .who { gap: 8px; }
+    .avatar.foto { width: 40px; height: 40px; }
+    .avatar.iniciais { font-size: 16px; }
+    nav { position: fixed; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 29; margin: 0; justify-content: space-around;
+      padding: 6px; border-radius: 22px; background: rgba(255,255,255,.72); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+      border: 1px solid rgba(255,255,255,.8); box-shadow: 0 10px 30px -10px rgba(90,70,30,.3); }
+    nav button { flex: 1; justify-content: center; padding: 11px 0; border-radius: 16px; }
+    nav button svg { width: 23px; height: 23px; }
+    nav button span { display: none; }
+    .savebar { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); left: 10px; right: 10px; border-radius: 16px; border: 1px solid var(--border); padding: 8px 10px; box-shadow: 0 6px 20px -8px rgba(90,70,30,.25); }
+    body { padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
+    .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -855,6 +860,7 @@ $('#btnSalvar').onclick = async () => {
 
 const SO_ADMIN = ['modelos', 'config', 'equipe'];
 function render() {
+  $('#nav').hidden = estado !== 'pronto';
   document.querySelectorAll('#nav button').forEach(b => {
     b.classList.toggle('active', b.dataset.view === view);
     b.hidden = estado !== 'pronto' || (!ehAdmin() && SO_ADMIN.includes(b.dataset.view));
