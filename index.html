@@ -45,7 +45,6 @@
     --shadow-lg: 0 20px 40px -12px rgba(90,70,30,.18);
     color-scheme: light;
   }
-  header::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--gold-line); }
   h1 { font-family: var(--display); font-weight: 600 !important; letter-spacing: 0 !important; }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -70,8 +69,13 @@
   html.travado, html.travado body { overflow: hidden; }
 
   /* Header */
-  header { background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; }
-  .bar { max-width: 1180px; margin: 0 auto; padding: 0 24px; height: 64px; display: flex; align-items: center; gap: 32px; }
+  /* Menu flutuante e transparente (efeito vidro): a página passa por baixo dele */
+  header { background: transparent; position: sticky; top: 0; z-index: 10; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 0; pointer-events: none; }
+  .bar { pointer-events: auto; max-width: 1180px; margin: 0 auto; padding: 0 10px 0 14px; height: 68px; display: flex; align-items: center; gap: 20px;
+    background: rgba(255,255,255,.55); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+    border: 1px solid rgba(255,255,255,.75); border-radius: 22px;
+    box-shadow: 0 10px 30px -12px rgba(90,70,30,.22), 0 1px 0 rgba(201,167,94,.25) inset; }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .bar { background: rgba(255,255,255,.94); } }
   .brand { display: flex; align-items: center; gap: 7px; font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: .02em; color: var(--accent-ink); flex: none; }
   .brand-mark { width: 22px; height: 22px; border-radius: 50%; background: var(--gold-line); color: var(--on-accent); display: grid; place-items: center; }
   .brand-mark svg { width: 13px; height: 13px; }
@@ -79,11 +83,12 @@
   .avatar.foto { width: 42px; height: 42px; object-fit: cover; padding: 0; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px #c9a75e; }
   .avatar.iniciais { font-size: 15px; letter-spacing: .5px; }
   .brand-logo { width: 52px; height: 52px; object-fit: contain; display: block; }
-  nav { display: flex; gap: 6px; }
-  nav button { border: 0; background: none; padding: 11px 18px; border-radius: 10px; cursor: pointer; color: var(--muted); font-weight: 550; font-size: 15px; display: flex; align-items: center; gap: 9px; }
-  nav button svg { width: 21px; height: 21px; }
-  nav button:hover { background: var(--bg); color: var(--text); }
-  nav button.active { background: var(--accent-soft); color: var(--accent-ink); }
+  nav { display: flex; gap: 2px; margin: 0 auto; padding: 5px; background: rgba(255,255,255,.7); border: 1px solid rgba(236,231,220,.9); border-radius: 999px; }
+  nav button { border: 0; background: none; padding: 9px 16px; border-radius: 999px; cursor: pointer; color: var(--muted); font-weight: 550; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: background .15s, color .15s; }
+  nav button svg { width: 19px; height: 19px; }
+  nav button:hover { background: rgba(247,240,225,.9); color: var(--text); }
+  nav button.active { background: var(--btn); color: var(--on-accent); box-shadow: 0 4px 12px -4px rgba(150,117,47,.6); }
+  .who { margin-left: 0 !important; }
   .who { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
   .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); display: grid; place-items: center; font-weight: 600; font-size: 12px; flex: none; }
 
@@ -335,7 +340,10 @@
     .agenda { grid-template-columns: 1fr; }
     .who span { display: none; }
     nav button span { display: none; }
-    nav button { padding: 11px 13px; }
+    nav button { padding: 9px 11px; }
+    header { padding: calc(8px + env(safe-area-inset-top, 0px)) 8px 0; }
+    .bar { height: 60px; border-radius: 18px; padding: 0 8px; }
+    .brand-logo { width: 40px; height: 40px; }
     .brand span { display: none; }
     .bar { gap: 16px; padding: 0 16px; }
     main { padding: 20px 16px 48px; }
@@ -348,6 +356,18 @@
     .d-body { padding: 20px 16px; }
     .d-foot { padding: 12px 16px; }
     .slot { padding: 12px 14px; gap: 10px; grid-template-columns: 56px 1fr auto; }
+  }
+  @media (max-width: 600px) {
+    .bar { gap: 6px; padding: 0 6px; height: 56px; }
+    .brand-logo { width: 34px; height: 34px; }
+    nav { padding: 3px; gap: 0; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+    nav::-webkit-scrollbar { display: none; }
+    nav button { padding: 8px 9px; flex: none; }
+    nav button svg { width: 18px; height: 18px; }
+    .who { gap: 6px; flex: none; }
+    .avatar.foto { width: 34px; height: 34px; }
+    .avatar.iniciais { font-size: 13px; }
+    .btn.sair { padding: 6px 8px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -422,6 +442,14 @@ const clone = o => JSON.parse(JSON.stringify(o));
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const duasLetras = n => { const p = String(n || '').trim().split(/\s+/).filter(w => !/^dra?\.?$/i.test(w)); return (p[0] || '?').replace(/[^\p{L}]/gu, '').slice(0, 2).toUpperCase() || '?'; };
+// CPF: guarda só os números, mostra com pontos e traço, e confere os dígitos verificadores
+const soDigitos = v => String(v || '').replace(/\D/g, '');
+const fmtCpf = v => { const d = soDigitos(v).slice(0, 11); return d.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2'); };
+function cpfValido(c) {
+  c = soDigitos(c); if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+  const dv = n => { let s = 0; for (let i = 0; i < n; i++) s += +c[i] * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; };
+  return dv(9) === +c[9] && dv(10) === +c[10];
+}
 const pac = id => S.pacientes.find(p => p.id === id);
 const initials = n => String(n || '').split(/\s+/).filter(Boolean).slice(0,2).map(w => w[0]).join('').toUpperCase();
 const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
@@ -1076,13 +1104,14 @@ function modalAgendar(hora) {
 // ---------- Pacientes ----------
 function renderPacientes() {
   const q = busca.toLowerCase();
-  const lista = S.pacientes.filter(p => !q || p.nome.toLowerCase().includes(q) || (p.tel || '').includes(q)).sort((a,b) => a.nome.localeCompare(b.nome));
+  const qd = soDigitos(q);
+  const lista = S.pacientes.filter(p => !q || p.nome.toLowerCase().includes(q) || (p.tel || '').includes(q) || (qd.length >= 3 && soDigitos(p.cpf).includes(qd))).sort((a,b) => a.nome.localeCompare(b.nome));
   const ultimo = id => { const r = S.registros.filter(r => r.pacienteId === id).sort(porData)[0]; return r ? fmtDate(r.data) : '—'; };
   $('#view').innerHTML = `
     <div class="page-head">
       <div><h1>Pacientes</h1><div class="sub">${S.pacientes.length} cadastrados</div></div>
       <div class="daynav">
-        <div class="search">${I.search}<input class="input" id="busca" placeholder="Buscar por nome ou telefone" value="${esc(busca)}"></div>
+        <div class="search">${I.search}<input class="input" id="busca" placeholder="Buscar por nome, telefone ou CPF" value="${esc(busca)}"></div>
         <button class="btn primary" data-a="novopac">${I.plus}Novo paciente</button>
       </div>
     </div>
@@ -1099,27 +1128,33 @@ function renderPacientes() {
 }
 
 function modalPaciente(id) {
-  const p = id ? pac(id) : { nome: '', nasc: '', tel: '', email: '', convenio: '', obs: '' };
+  const p = id ? pac(id) : { nome: '', cpf: '', nasc: '', tel: '', email: '', convenio: '', obs: '' };
   openModal(`${modalHead(id ? 'Editar paciente' : 'Novo paciente')}
     <div class="card-body grid">
       <div><label class="f" for="pNome">Nome completo</label><input class="input" id="pNome" value="${esc(p.nome)}"></div>
       <div class="grid g2">
+        <div><label class="f" for="pCpf">CPF</label><input class="input" id="pCpf" inputmode="numeric" maxlength="14" value="${esc(fmtCpf(p.cpf))}" placeholder="000.000.000-00"></div>
         <div><label class="f" for="pNasc">Data de nascimento</label><input class="input" type="date" id="pNasc" value="${esc(p.nasc)}"></div>
-        <div><label class="f" for="pTel">Telefone</label><input class="input" id="pTel" value="${esc(p.tel)}" placeholder="(00) 00000-0000"></div>
       </div>
       <div class="grid g2">
+        <div><label class="f" for="pTel">Telefone</label><input class="input" id="pTel" value="${esc(p.tel)}" placeholder="(00) 00000-0000"></div>
         <div><label class="f" for="pEmail">E-mail</label><input class="input" id="pEmail" value="${esc(p.email)}"></div>
-        <div><label class="f" for="pConv">Convênio</label><input class="input" id="pConv" value="${esc(p.convenio)}" placeholder="Particular"></div>
       </div>
+      <div><label class="f" for="pConv">Convênio</label><input class="input" id="pConv" value="${esc(p.convenio)}" placeholder="Particular"></div>
       <div><label class="f" for="pObs">Observações (alergias, histórico)</label><textarea class="input" id="pObs">${esc(p.obs)}</textarea></div>
     </div>
     <div class="modal-foot">
       ${id && ehAdmin() ? `<button class="btn ghost danger" id="pDel" style="margin-right:auto">${I.trash}Excluir</button>` : ''}
       <button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" id="pOk">Salvar</button>
     </div>`);
+  $('#pCpf').oninput = e => { e.target.value = fmtCpf(e.target.value); };
   $('#pOk').onclick = () => {
     const nome = $('#pNome').value.trim(); if (!nome) return $('#pNome').focus();
-    Object.assign(p, { nome, nasc: $('#pNasc').value, tel: $('#pTel').value.trim(), email: $('#pEmail').value.trim(), convenio: $('#pConv').value.trim(), obs: $('#pObs').value.trim() });
+    const cpf = soDigitos($('#pCpf').value);
+    if (cpf && !cpfValido(cpf)) { toast('CPF inválido. Confira os números.', 'erro'); return $('#pCpf').focus(); }
+    const outro = cpf && S.pacientes.find(x => x.id !== id && soDigitos(x.cpf) === cpf);
+    if (outro) { toast(`Este CPF já está cadastrado para ${outro.nome}.`, 'erro'); return $('#pCpf').focus(); }
+    Object.assign(p, { nome, cpf, nasc: $('#pNasc').value, tel: $('#pTel').value.trim(), email: $('#pEmail').value.trim(), convenio: $('#pConv').value.trim(), obs: $('#pObs').value.trim() });
     if (!id) { p.id = uid(); S.pacientes.push(p); }
     gravar('pacientes', p);
     closeModal(); render(); if (id && drawerPac === id) abrirProntuario(id, drawerConsulta, drawerTab); toast('Paciente salvo');
@@ -1144,7 +1179,7 @@ function abrirProntuario(pid, consultaId, tab) {
   drawerPac = pid; drawerConsulta = consultaId || null; drawerTab = tab;
   const p = pac(pid); if (!p) return fecharDrawer();
   const n = c => S[c].filter(x => x.pacienteId === pid).length;
-  const meta = [idade(p.nasc), p.tel, p.convenio].filter(Boolean).map(esc);
+  const meta = [p.cpf ? 'CPF ' + fmtCpf(p.cpf) : '', idade(p.nasc), p.tel, p.convenio].filter(Boolean).map(esc);
   const aba = (t, rotulo, cnt) => `<button data-t="${t}" class="${tab === t ? 'active' : ''}">${rotulo}${cnt != null ? ` <span class="count">${cnt}</span>` : ''}</button>`;
   $('#drawer').innerHTML = `
     <div class="d-head">
