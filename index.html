@@ -249,6 +249,11 @@
   .search .limpar-busca { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
   .search .limpar-busca svg { position: static; transform: none; width: 15px; height: 15px; color: var(--muted); }
   .busca-linha { width: 100%; max-width: 460px; margin: -6px 0 16px; }
+  .daynav .busca-linha { margin: 0; width: 300px; }
+  th.col-acao, td.col-acao { width: 52px; text-align: right; padding-right: 14px; }
+  .del-pac { color: var(--faint); }
+  .del-pac:hover { color: var(--danger); background: var(--danger-soft); }
+  @media (max-width: 600px) { .daynav .busca-linha { width: 100%; } }
   .busca-linha .input { padding-right: 40px; }
   .res-card { padding: 6px 0; align-self: start; }
   .res-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 12px 18px 8px; }
@@ -1242,6 +1247,7 @@ $('#view').addEventListener('click', e => {
   else if (a === 'cxLinha') { cxExtra += 5; }
   else if (a === 'cxPdf' || a === 'cxPrint') { salvarCaixa(); return pdfCaixa(a === 'cxPrint'); }
   else if (a === 'novopac') return modalPaciente();
+  else if (a === 'excluirPac') return excluirPaciente(id);
   else if (a === 'pac') return ehAdmin() ? abrirProntuario(id) : modalPaciente(id);
   else if (a === 'modelo') return modalModelo(id);
   else if (a === 'salvarcfg') return salvarConfig();
@@ -1343,11 +1349,11 @@ function renderPacientes() {
     </div>
     <div class="card table-wrap">
       <table>
-        <thead><tr><th>Nome</th><th class="hide-sm">Idade</th><th class="hide-sm">Telefone</th><th class="hide-sm">Convênio</th><th>Último registro</th></tr></thead>
+        <thead><tr><th>Nome</th><th class="hide-sm">Idade</th><th class="hide-sm">Telefone</th><th class="hide-sm">Convênio</th><th>Último registro</th>${ehAdmin() ? '<th class="col-acao"></th>' : ''}</tr></thead>
         <tbody>${lista.map(p => `<tr data-a="pac" data-id="${p.id}">
           <td><div class="pname"><div class="avatar">${initials(p.nome)}</div>${esc(p.nome)}</div></td>
-          <td class="hide-sm">${idade(p.nasc) || '—'}</td><td class="hide-sm">${esc(p.tel) || '—'}</td><td class="hide-sm">${esc(p.convenio) || '—'}</td><td>${ultimo(p.id)}</td>
-        </tr>`).join('') || `<tr><td colspan="5" class="empty-day">${S.pacientes.length ? 'Nenhum paciente encontrado.' : 'Nenhum paciente ainda. Cadastre em <b>Novo paciente</b> ou agende um horário.'}</td></tr>`}</tbody>
+          <td class="hide-sm">${idade(p.nasc) || '—'}</td><td class="hide-sm">${esc(p.tel) || '—'}</td><td class="hide-sm">${esc(p.convenio) || '—'}</td><td>${ultimo(p.id)}</td>${ehAdmin() ? `<td class="col-acao"><button class="icon-btn del-pac" data-a="excluirPac" data-id="${p.id}" title="Excluir ${esc(p.nome)}" aria-label="Excluir ${esc(p.nome)}">${I.trash}</button></td>` : ''}
+        </tr>`).join('') || `<tr><td colspan="6" class="empty-day">${S.pacientes.length ? 'Nenhum paciente encontrado.' : 'Nenhum paciente ainda. Cadastre em <b>Novo paciente</b> ou agende um horário.'}</td></tr>`}</tbody>
       </table>
     </div>`;
   ligarBusca('busca', v => { busca = v; });
@@ -1386,13 +1392,21 @@ function modalPaciente(id) {
     gravar('pacientes', p);
     closeModal(); render(); if (id && drawerPac === id) abrirProntuario(id, drawerConsulta, drawerTab); toast('Paciente salvo');
   };
-  if (id && ehAdmin()) $('#pDel').onclick = () => confirmar(`Excluir ${p.nome} e todo o prontuário (registros, prescrições e fotos)?`, () => {
-    const ligados = c => S[c].filter(x => x.pacienteId === id);
+  if (id && ehAdmin()) $('#pDel').onclick = () => excluirPaciente(id);
+}
+// Exclui o paciente com agendamentos, registros, prescrições e fotos (só administradoras)
+function excluirPaciente(id) {
+  const p = pac(id); if (!p || !ehAdmin()) return;
+  const ligados = c => S[c].filter(x => x.pacienteId === id);
+  const n = ligados('consultas').length, r = ligados('registros').length;
+  const extra = [n ? `${n} ${n === 1 ? 'agendamento' : 'agendamentos'}` : '', r ? `${r} ${r === 1 ? 'registro' : 'registros'}` : ''].filter(Boolean).join(' e ');
+  confirmar(`Excluir ${p.nome}${extra ? ` (com ${extra})` : ''} e todo o prontuário (registros, prescrições e fotos)?`, () => {
     ['consultas','registros','prescricoes','fotos'].forEach(c => ligados(c).forEach(x => apagar(c, x.id)));
     if (assets) ligados('fotos').forEach(f => assets.delete(f.asset).catch(() => {}));
     ['consultas','registros','prescricoes','fotos'].forEach(c => { S[c] = S[c].filter(x => x.pacienteId !== id); });
     S.pacientes = S.pacientes.filter(x => x.id !== id); apagar('pacientes', id);
-    fecharDrawer(); render(); toast('Paciente excluído');
+    if (drawerPac === id) fecharDrawer();
+    closeModal(); render(); toast('Paciente excluído');
   }, 'Excluir paciente');
 }
 
